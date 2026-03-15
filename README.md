@@ -15,7 +15,14 @@ UniMart is a community-first marketplace app where only approved members of a sc
 ### Backend
 
 1. Create a PostgreSQL database named `unimart`.
-2. Set environment variables if you are not using the defaults in [`application.yml`](/C:/Users/priya/OneDrive/Desktop/UniMart/src/main/resources/application.yml).
+2. Set the required database environment variables:
+
+```powershell
+$env:DB_URL="jdbc:postgresql://localhost:5432/unimart"
+$env:DB_USERNAME="your_postgres_username"
+$env:DB_PASSWORD="your_postgres_password"
+```
+
 3. Run:
 
 ```bash
