@@ -1,0 +1,9 @@
+.gradle/
+.gradle-wrapper/
+build/
+out/
+node_modules/
+frontend/dist/
+.idea/
+.vscode/
+*.iml
