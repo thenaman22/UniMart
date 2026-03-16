@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/uploads")
@@ -26,5 +28,13 @@ public class UploadController {
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
         return uploadService.prepareUpload(request.contentType(), request.fileSize());
+    }
+
+    @PostMapping("/file")
+    public Object uploadFile(@RequestParam("file") MultipartFile file, @CurrentUser AuthContext authContext) {
+        if (authContext == null) {
+            throw new ApiException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+        return uploadService.storeFile(file);
     }
 }

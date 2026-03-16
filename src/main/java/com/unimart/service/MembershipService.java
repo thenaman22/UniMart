@@ -57,7 +57,16 @@ public class MembershipService {
     }
 
     public List<Membership> activeMemberships(UserAccount user) {
-        return membershipRepository.findByUserAndStatus(user, MembershipStatus.ACTIVE);
+        return membershipRepository.findByUserIdAndStatus(user.getId(), MembershipStatus.ACTIVE);
+    }
+
+    @Transactional
+    public List<Membership> autoAssignMembershipsForUser(UserAccount user) {
+        String emailDomain = user.getEmail().substring(user.getEmail().indexOf('@') + 1);
+        List<CommunityDomain> matches = communityDomainRepository.findByEmailDomain(emailDomain);
+        return matches.stream()
+            .map(match -> upsertMembership(user, match.getCommunity(), MembershipStatus.ACTIVE))
+            .toList();
     }
 
     @Transactional

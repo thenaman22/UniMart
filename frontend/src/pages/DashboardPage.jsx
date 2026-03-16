@@ -1,13 +1,21 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import { api } from '../api'
+import { ListingPreview } from '../components/ListingPreview'
 
 export function DashboardPage({ user, communities }) {
   const [discover, setDiscover] = useState([])
   const [listings, setListings] = useState([])
-  const [query, setQuery] = useState('')
   const [inviteToken, setInviteToken] = useState('')
   const [error, setError] = useState('')
+  const location = useLocation()
+
+  const searchQuery = useMemo(() => {
+    const params = new URLSearchParams(location.search)
+    return params.get('q') || ''
+  }, [location.search])
+
+  const joinedCommunityIds = new Set(communities.map(community => String(community.communityId)))
 
   useEffect(() => {
     api('/communities/discover').then(setDiscover).catch(() => {})
@@ -15,21 +23,11 @@ export function DashboardPage({ user, communities }) {
 
   useEffect(() => {
     if (!user) return
-    api('/listings')
+    const endpoint = searchQuery ? `/listings?query=${encodeURIComponent(searchQuery)}` : '/listings'
+    api(endpoint)
       .then(setListings)
       .catch(err => setError(err.message))
-  }, [user])
-
-  async function search(event) {
-    event.preventDefault()
-    try {
-      const response = await api(`/listings?query=${encodeURIComponent(query)}`)
-      setListings(response)
-      setError('')
-    } catch (err) {
-      setError(err.message)
-    }
-  }
+  }, [user, searchQuery])
 
   async function joinByDomain(communityId) {
     try {
@@ -65,16 +63,79 @@ export function DashboardPage({ user, communities }) {
   if (!user) {
     return (
       <section className="panel">
+        <p className="eyebrow">Marketplace preview</p>
         <h1>Private community marketplace</h1>
-        <p>Sign in to browse campus communities, search listings, and sell to trusted members.</p>
+        <p>Browse the directory, then sign in to unlock your community feed.</p>
+        <div className="button-row wrap-row">
+          <Link className="button-link dark" to="/communities">Browse communities</Link>
+          <Link className="button-link ghost-link" to="/auth">Sign in</Link>
+        </div>
       </section>
     )
   }
 
   return (
-    <div className="dashboard-grid">
-      <section className="panel">
-        <h2>Your communities</h2>
+    <div className="social-layout">
+      <section className="feed-column">
+        <div className="feed-intro panel">
+          <div>
+            <p className="eyebrow">Marketplace feed</p>
+            <h2>{searchQuery ? `Results for "${searchQuery}"` : 'Latest posts from your communities'}</h2>
+            <p className="feed-intro-copy">
+              Scan fresh listings, jump into trusted spaces, and post quickly when you are ready to sell.
+            </p>
+          </div>
+          <div className="feed-intro-stats">
+            <div className="stat-pill">
+              <strong>{communities.length}</strong>
+              <span>Joined communities</span>
+            </div>
+            <div className="stat-pill">
+              <strong>{listings.length}</strong>
+              <span>Visible listings</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="feed-header">
+          <div>
+            <p className="eyebrow">For you</p>
+            <h2>Fresh activity</h2>
+          </div>
+          <Link className="button-link dark" to="/sell">Create post</Link>
+        </div>
+
+        {error && <p className="error">{error}</p>}
+
+        <div className="feed-scroll">
+          {listings.map(listing => (
+            <article key={listing.id} className="listing-card feed-card">
+              <ListingPreview listing={listing} />
+              <div className="feed-card-body">
+                <div className="feed-card-header">
+                  <div>
+                    <h3>{listing.title}</h3>
+                    <p className="feed-meta">{listing.sellerName} • {listing.category} • {listing.itemCondition}</p>
+                  </div>
+                  <p className="price">${listing.price}</p>
+                </div>
+                <p>{listing.description}</p>
+              </div>
+            </article>
+          ))}
+          {listings.length === 0 && (
+            <article className="panel">
+              <p>No visible listings yet. Join a community or create the first post.</p>
+            </article>
+          )}
+        </div>
+      </section>
+
+      <aside className="panel sidebar-panel sticky-panel">
+        <div className="sidebar-section">
+          <p className="eyebrow">Your spaces</p>
+          <h2>Communities</h2>
+        </div>
         <div className="stack">
           {communities.length === 0 && <p>No active memberships yet.</p>}
           {communities.map(community => (
@@ -84,52 +145,39 @@ export function DashboardPage({ user, communities }) {
             </Link>
           ))}
         </div>
-      </section>
 
-      <section className="panel wide">
-        <div className="panel-header">
-          <div>
-            <p className="eyebrow">Marketplace feed</p>
-            <h2>Search joined communities</h2>
-          </div>
-          <form className="searchbar" onSubmit={search}>
-            <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search for bikes, books, furniture..." />
-            <button type="submit">Search</button>
-          </form>
+        <div className="sidebar-section">
+          <p className="eyebrow">Discover</p>
+          <h2>Communities</h2>
         </div>
-        {error && <p className="error">{error}</p>}
-        <div className="listing-grid">
-          {listings.map(listing => (
-            <article key={listing.id} className="listing-card">
-              <p className="price">${listing.price}</p>
-              <h3>{listing.title}</h3>
-              <p>{listing.description}</p>
-              <small>{listing.category} • {listing.itemCondition}</small>
-            </article>
-          ))}
-          {listings.length === 0 && <p>No visible listings yet. Join a community or create the first post.</p>}
-        </div>
-      </section>
 
-      <section className="panel wide">
-        <h2>Discover communities</h2>
-        <form className="searchbar invite-form" onSubmit={joinByInvite}>
-          <input value={inviteToken} onChange={event => setInviteToken(event.target.value)} placeholder="Have an invite token? Paste it here." />
+        <form className="stack invite-stack" onSubmit={joinByInvite}>
+          <input value={inviteToken} onChange={event => setInviteToken(event.target.value)} placeholder="Paste invite token" />
           <button type="submit">Join with invite</button>
         </form>
-        <div className="community-grid">
+
+        <div className="stack">
           {discover.map(community => (
-            <article key={community.id} className="community-card">
+            <article key={community.id} className="community-card compact-card">
+              <div className="community-card-top">
+                <span className="badge neutral">{community.privateCommunity ? 'Closed' : 'Open'}</span>
+                {joinedCommunityIds.has(String(community.id)) && <span className="badge success">Joined</span>}
+              </div>
               <h3>{community.name}</h3>
               <p>{community.description}</p>
-              <div className="button-row">
-                <button onClick={() => joinByDomain(community.id)}>Join by email</button>
-                <button className="ghost" onClick={() => requestMembership(community.id)}>Request access</button>
+              <div className="button-row wrap-row">
+                <Link className="button-link dark" to={`/communities/${community.id}`}>View</Link>
+                {!joinedCommunityIds.has(String(community.id)) && (
+                  <>
+                    <button onClick={() => joinByDomain(community.id)}>Join by email</button>
+                    <button className="ghost" onClick={() => requestMembership(community.id)}>Request access</button>
+                  </>
+                )}
               </div>
             </article>
           ))}
         </div>
-      </section>
+      </aside>
     </div>
   )
 }

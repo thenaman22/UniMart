@@ -8,9 +8,9 @@ export function CreateListingPage({ user, communities }) {
     description: '',
     price: '',
     category: '',
-    itemCondition: '',
-    mediaType: 'image/jpeg'
+    itemCondition: ''
   })
+  const [files, setFiles] = useState([])
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -18,16 +18,43 @@ export function CreateListingPage({ user, communities }) {
     return <section className="panel"><p>Please sign in to create a listing.</p></section>
   }
 
+  async function uploadFiles() {
+    const token = localStorage.getItem('unimart-token')
+    const uploaded = []
+    for (const file of files) {
+      const body = new FormData()
+      body.append('file', file)
+      const response = await fetch('http://localhost:8080/uploads/file', {
+        method: 'POST',
+        headers: token ? { 'X-Auth-Token': token } : {},
+        body
+      })
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload.message || 'Upload failed')
+      }
+      uploaded.push({
+        storageKey: payload.storageKey,
+        contentType: payload.contentType,
+        fileSize: payload.fileSize
+      })
+    }
+    return uploaded
+  }
+
   async function submit(event) {
     event.preventDefault()
     setError('')
     setMessage('')
     try {
-      const upload = await api('/uploads/prepare', {
-        method: 'POST',
-        body: JSON.stringify({ contentType: form.mediaType, fileSize: 1024 })
-      })
+      if (files.length === 0) {
+        throw new Error('Please select at least one image or video.')
+      }
+      if (files.length > 5) {
+        throw new Error('You can upload up to 5 photos or videos per listing.')
+      }
 
+      const media = await uploadFiles()
       await api('/listings', {
         method: 'POST',
         body: JSON.stringify({
@@ -37,11 +64,7 @@ export function CreateListingPage({ user, communities }) {
           price: Number(form.price),
           category: form.category,
           itemCondition: form.itemCondition,
-          media: [{
-            storageKey: upload.storageKey,
-            contentType: upload.contentType,
-            fileSize: upload.fileSize
-          }]
+          media
         })
       })
 
@@ -52,9 +75,9 @@ export function CreateListingPage({ user, communities }) {
         description: '',
         price: '',
         category: '',
-        itemCondition: '',
-        mediaType: 'image/jpeg'
+        itemCondition: ''
       })
+      setFiles([])
     } catch (err) {
       setError(err.message)
     }
@@ -75,10 +98,28 @@ export function CreateListingPage({ user, communities }) {
         <input value={form.price} onChange={event => setForm({ ...form, price: event.target.value })} placeholder="Price" type="number" min="0" step="0.01" required />
         <input value={form.category} onChange={event => setForm({ ...form, category: event.target.value })} placeholder="Category" required />
         <input value={form.itemCondition} onChange={event => setForm({ ...form, itemCondition: event.target.value })} placeholder="Condition" required />
-        <select value={form.mediaType} onChange={event => setForm({ ...form, mediaType: event.target.value })}>
-          <option value="image/jpeg">Image</option>
-          <option value="video/mp4">Video</option>
-        </select>
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+          multiple
+          onChange={event => {
+            const nextFiles = Array.from(event.target.files || []).slice(0, 5)
+            setFiles(nextFiles)
+            if ((event.target.files || []).length > 5) {
+              setError('Only the first 5 files were selected.')
+            } else {
+              setError('')
+            }
+          }}
+        />
+        <p className="field-hint">Add up to 5 photos or videos. The first item becomes the opening slide.</p>
+        {files.length > 0 && (
+          <div className="media-preview-grid">
+            {files.map(file => (
+              <div key={`${file.name}-${file.size}`} className="media-chip">{file.name}</div>
+            ))}
+          </div>
+        )}
         <button type="submit">Publish listing</button>
       </form>
 

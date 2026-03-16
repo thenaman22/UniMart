@@ -42,14 +42,35 @@ Build a private community marketplace where only approved members of a school or
   - community listings
   - moderator invite generation
   - moderator domain management
+- Profile page where users can edit their account details
 - Create listing page
 - Moderation page for requests and reports
 
 ## Seeded Demo State
 
-- Community: `Campus Market`
-- Allowed domain: `school.edu`
-- Admin user: `admin@school.edu`
+- Communities:
+  - `Campus Market` with domain `school.edu`
+  - `Makers Exchange` with domain `makers.org`
+- Active users:
+  - `admin@school.edu`
+  - `ava@school.edu`
+  - `noah@school.edu`
+  - `lead@makers.org`
+  - `mia@makers.org`
+  - `ethan@makers.org`
+  - `sofia@makers.org`
+  - `liam@makers.org`
+  - `grace@makers.org`
+  - `jack@makers.org`
+- Extra membership test users:
+  - `pending@school.edu` with pending access
+  - `former@makers.org` with revoked access
+- Seeded content:
+  - sample invite links for both communities
+  - multiple listings with one image each
+  - one sold listing
+  - one removed listing
+  - sample moderation reports
 
 ## What We Should Verify
 
@@ -95,6 +116,7 @@ Build a private community marketplace where only approved members of a school or
 - Real object storage is not integrated yet
 - Upload URLs are placeholders
 - No chat, payment, ratings, or delivery workflows
+- In `dev`, demo seed data is refreshed on each backend startup
 
 ## Next Priorities
 

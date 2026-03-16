@@ -9,6 +9,7 @@ import com.unimart.repository.ListingMediaRepository;
 import com.unimart.repository.ListingRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -81,7 +82,17 @@ public class ListingService {
         if (communityIds.isEmpty()) {
             return List.of();
         }
-        return listingRepository.searchAccessibleListings(communityIds, status, query, category, itemCondition, minPrice, maxPrice);
+        List<Listing> listings = status == null
+            ? listingRepository.findByCommunityIdInOrderByCreatedAtDesc(communityIds)
+            : listingRepository.findByCommunityIdInAndStatusOrderByCreatedAtDesc(communityIds, status);
+
+        return listings.stream()
+            .filter(listing -> matchesQuery(listing, query))
+            .filter(listing -> matchesExact(listing.getCategory(), category))
+            .filter(listing -> matchesExact(listing.getItemCondition(), itemCondition))
+            .filter(listing -> minPrice == null || listing.getPrice().compareTo(minPrice) >= 0)
+            .filter(listing -> maxPrice == null || listing.getPrice().compareTo(maxPrice) <= 0)
+            .toList();
     }
 
     @Transactional
@@ -129,5 +140,27 @@ public class ListingService {
     public List<ListingMedia> mediaForListing(Long listingId, UserAccount user) {
         getAccessibleListing(listingId, user);
         return listingMediaRepository.findByListingId(listingId);
+    }
+
+    public ListingMedia previewMedia(Long listingId, UserAccount user) {
+        getAccessibleListing(listingId, user);
+        return listingMediaRepository.findFirstByListingIdOrderByIdAsc(listingId);
+    }
+
+    private boolean matchesQuery(Listing listing, String query) {
+        if (query == null || query.isBlank()) {
+            return true;
+        }
+        String normalized = query.toLowerCase(Locale.ROOT);
+        return listing.getTitle().toLowerCase(Locale.ROOT).contains(normalized)
+            || listing.getDescription().toLowerCase(Locale.ROOT).contains(normalized)
+            || listing.getCategory().toLowerCase(Locale.ROOT).contains(normalized);
+    }
+
+    private boolean matchesExact(String value, String expected) {
+        if (expected == null || expected.isBlank()) {
+            return true;
+        }
+        return value != null && value.equalsIgnoreCase(expected);
     }
 }

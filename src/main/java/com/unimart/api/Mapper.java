@@ -6,6 +6,7 @@ import com.unimart.domain.Listing;
 import com.unimart.domain.ListingMedia;
 import com.unimart.domain.Membership;
 import com.unimart.domain.Report;
+import com.unimart.domain.UserAccount;
 import java.util.List;
 import java.util.Map;
 
@@ -27,24 +28,28 @@ public final class Mapper {
         );
     }
 
-    public static Map<String, Object> listingSummary(Listing listing) {
-        return Map.of(
-            "id", listing.getId(),
-            "communityId", listing.getCommunity().getId(),
-            "title", listing.getTitle(),
-            "description", listing.getDescription(),
-            "price", listing.getPrice(),
-            "category", listing.getCategory(),
-            "itemCondition", listing.getItemCondition(),
-            "status", listing.getStatus().name(),
-            "sellerName", listing.getSeller().getDisplayName(),
-            "createdAt", listing.getCreatedAt()
+    public static Map<String, Object> listingSummary(Listing listing, List<ListingMedia> media) {
+        ListingMedia previewMedia = media.isEmpty() ? null : media.get(0);
+        return Map.ofEntries(
+            Map.entry("id", listing.getId()),
+            Map.entry("communityId", listing.getCommunity().getId()),
+            Map.entry("title", listing.getTitle()),
+            Map.entry("description", listing.getDescription()),
+            Map.entry("price", listing.getPrice()),
+            Map.entry("category", listing.getCategory()),
+            Map.entry("itemCondition", listing.getItemCondition()),
+            Map.entry("status", listing.getStatus().name()),
+            Map.entry("sellerName", listing.getSeller().getDisplayName()),
+            Map.entry("createdAt", listing.getCreatedAt()),
+            Map.entry("previewMediaUrl", previewMedia == null ? "" : mediaUrl(previewMedia)),
+            Map.entry("previewMediaType", previewMedia == null ? "" : previewMedia.getType().name()),
+            Map.entry("media", media.stream().map(Mapper::listingMedia).toList())
         );
     }
 
     public static Map<String, Object> listingDetail(Listing listing, List<ListingMedia> media) {
         return Map.of(
-            "listing", listingSummary(listing),
+            "listing", listingSummary(listing, media),
             "media", media.stream().map(Mapper::listingMedia).toList()
         );
     }
@@ -56,7 +61,7 @@ public final class Mapper {
             "storageKey", listingMedia.getStorageKey(),
             "contentType", listingMedia.getContentType(),
             "fileSize", listingMedia.getFileSize(),
-            "url", "https://storage.example.com/" + listingMedia.getStorageKey()
+            "url", mediaUrl(listingMedia)
         );
     }
 
@@ -91,5 +96,22 @@ public final class Mapper {
             "status", membership.getStatus().name(),
             "role", membership.getRole().name()
         );
+    }
+
+    public static Map<String, Object> profile(UserAccount user) {
+        return Map.of(
+            "id", user.getId(),
+            "displayName", user.getDisplayName(),
+            "email", user.getEmail(),
+            "bio", user.getBio() == null ? "" : user.getBio(),
+            "phoneNumber", user.getPhoneNumber() == null ? "" : user.getPhoneNumber(),
+            "location", user.getLocation() == null ? "" : user.getLocation(),
+            "emailVerified", user.isEmailVerified(),
+            "profileImageUrl", user.getProfileImageKey() == null ? "" : "/media/" + user.getProfileImageKey()
+        );
+    }
+
+    private static String mediaUrl(ListingMedia listingMedia) {
+        return "/media/" + listingMedia.getStorageKey();
     }
 }

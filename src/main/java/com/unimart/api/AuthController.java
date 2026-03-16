@@ -1,6 +1,7 @@
 package com.unimart.api;
 
 import com.unimart.api.dto.AuthDtos.RequestCodeRequest;
+import com.unimart.api.dto.AuthDtos.SignUpRequest;
 import com.unimart.api.dto.AuthDtos.VerifyCodeRequest;
 import com.unimart.service.AuthService;
 import jakarta.validation.Valid;
@@ -19,9 +20,14 @@ public class AuthController {
         this.authService = authService;
     }
 
+    @PostMapping("/sign-up")
+    public Object signUp(@Valid @RequestBody SignUpRequest request) {
+        return authService.signUp(request.email(), request.displayName());
+    }
+
     @PostMapping("/request-code")
     public Object requestCode(@Valid @RequestBody RequestCodeRequest request) {
-        return authService.requestCode(request.email(), request.displayName());
+        return authService.requestCode(request.email());
     }
 
     @PostMapping("/verify")

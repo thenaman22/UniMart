@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:file:.env.properties[.properties]
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}
@@ -25,3 +27,6 @@ app:
     max-file-size-bytes: 26214400
     allowed-image-types: image/jpeg,image/png,image/webp
     allowed-video-types: video/mp4,video/webm
+    storage-path: uploads
+  seed:
+    refresh-demo-data: false

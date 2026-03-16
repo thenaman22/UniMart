@@ -51,7 +51,7 @@ public class ListingController {
         requireAuth(authContext);
         return listingService.searchListings(authContext.user(), query, category, itemCondition, minPrice, maxPrice, status)
             .stream()
-            .map(Mapper::listingSummary)
+            .map(listing -> Mapper.listingSummary(listing, listingService.mediaForListing(listing.getId(), authContext.user())))
             .toList();
     }
 
@@ -85,7 +85,8 @@ public class ListingController {
         @CurrentUser AuthContext authContext
     ) {
         requireAuth(authContext);
-        return Mapper.listingSummary(listingService.updateStatus(listingId, authContext.user(), status));
+        Listing listing = listingService.updateStatus(listingId, authContext.user(), status);
+        return Mapper.listingSummary(listing, listingService.mediaForListing(listing.getId(), authContext.user()));
     }
 
     @PatchMapping("/{listingId}")
@@ -95,7 +96,7 @@ public class ListingController {
         @CurrentUser AuthContext authContext
     ) {
         requireAuth(authContext);
-        return Mapper.listingSummary(listingService.updateListing(
+        Listing listing = listingService.updateListing(
             listingId,
             authContext.user(),
             request.title(),
@@ -103,7 +104,8 @@ public class ListingController {
             request.price(),
             request.category(),
             request.itemCondition()
-        ));
+        );
+        return Mapper.listingSummary(listing, listingService.mediaForListing(listing.getId(), authContext.user()));
     }
 
     @PostMapping("/{listingId}/reports")

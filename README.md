@@ -15,15 +15,18 @@ UniMart is a community-first marketplace app where only approved members of a sc
 ### Backend
 
 1. Create a PostgreSQL database named `unimart`.
-2. Set the required database environment variables:
+2. Create a local `.env.properties` file in the project root using [.env.properties.example](/C:/Users/priya/OneDrive/Desktop/UniMart/.env.properties.example) as a template.
+3. Put your local config in it:
 
-```powershell
-$env:DB_URL="jdbc:postgresql://localhost:5432/unimart"
-$env:DB_USERNAME="your_postgres_username"
-$env:DB_PASSWORD="your_postgres_password"
+```properties
+DB_URL=jdbc:postgresql://localhost:5432/unimart
+DB_USERNAME=your_postgres_username
+DB_PASSWORD=your_postgres_password
+spring.profiles.active=dev
+app.seed.refresh-demo-data=true
 ```
 
-3. Run:
+4. Run:
 
 ```bash
 .\gradlew.bat bootRun
@@ -31,9 +34,11 @@ $env:DB_PASSWORD="your_postgres_password"
 
 This project includes a repo-local Gradle bootstrap script, so you do not need a global Gradle install. The first run downloads Gradle `8.9`.
 
+With `app.seed.refresh-demo-data=true`, startup clears and reseeds the demo communities, users, listings, invites, and reports.
+
 ### Frontend
 
-1. In [`frontend/package.json`](/C:/Users/priya/OneDrive/Desktop/UniMart/frontend/package.json), install dependencies:
+1. In [frontend/package.json](/C:/Users/priya/OneDrive/Desktop/UniMart/frontend/package.json), install dependencies:
 
 ```bash
 npm install
@@ -42,10 +47,10 @@ npm run dev
 
 ## Demo flow
 
-- Seeded admin user: `admin@school.edu`
-- Seeded community: `Campus Market`
-- Request a login code on the auth screen, then verify with the displayed dev code.
-- Join the seeded community by organization email or use moderation/invite flows from the UI.
+- Start backend with demo refresh enabled.
+- Start frontend.
+- Sign in with any seeded email from [demo-users.md](/C:/Users/priya/OneDrive/Desktop/UniMart/demo-users.md).
+- Request a code, then verify with the displayed dev code.
 
 ## Notes
 

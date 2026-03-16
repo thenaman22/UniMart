@@ -30,7 +30,7 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String token = request.getHeader("X-Auth-Token");
         if (token != null && !token.isBlank()) {
-            UserSession session = userSessionRepository.findByTokenAndExpiresAtAfter(token, Instant.now()).orElse(null);
+            UserSession session = userSessionRepository.findActiveSessionWithUser(token, Instant.now()).orElse(null);
             if (session != null) {
                 request.setAttribute(CurrentUserArgumentResolver.AUTH_CONTEXT_ATTRIBUTE, new AuthContext(session.getUser()));
             }

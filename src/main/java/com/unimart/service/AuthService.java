@@ -22,6 +22,7 @@ public class AuthService {
     private final LoginCodeRepository loginCodeRepository;
     private final UserAccountRepository userAccountRepository;
     private final UserSessionRepository userSessionRepository;
+    private final MembershipService membershipService;
     private final int otpExpiryMinutes;
     private final Random random = new Random();
 
@@ -29,17 +30,39 @@ public class AuthService {
         LoginCodeRepository loginCodeRepository,
         UserAccountRepository userAccountRepository,
         UserSessionRepository userSessionRepository,
+        MembershipService membershipService,
         @Value("${app.auth.otp-expiry-minutes}") int otpExpiryMinutes
     ) {
         this.loginCodeRepository = loginCodeRepository;
         this.userAccountRepository = userAccountRepository;
         this.userSessionRepository = userSessionRepository;
+        this.membershipService = membershipService;
         this.otpExpiryMinutes = otpExpiryMinutes;
     }
 
     @Transactional
-    public Map<String, String> requestCode(String email, String displayName) {
+    public Map<String, Object> signUp(String email, String displayName) {
         String normalizedEmail = email.toLowerCase();
+        if (userAccountRepository.findByEmail(normalizedEmail).isPresent()) {
+            throw new ApiException(HttpStatus.CONFLICT, "An account already exists for this email");
+        }
+
+        UserAccount user = new UserAccount();
+        user.setEmail(normalizedEmail);
+        user.setDisplayName(displayName == null || displayName.isBlank() ? normalizedEmail.split("@")[0] : displayName);
+        user.setEmailVerified(false);
+        userAccountRepository.save(user);
+        membershipService.autoAssignMembershipsForUser(user);
+
+        return requestCode(normalizedEmail);
+    }
+
+    @Transactional
+    public Map<String, Object> requestCode(String email) {
+        String normalizedEmail = email.toLowerCase();
+        userAccountRepository.findByEmail(normalizedEmail)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "No account found for this email. Please sign up first."));
+
         String code = String.format("%06d", random.nextInt(1_000_000));
 
         LoginCode loginCode = new LoginCode();
@@ -48,14 +71,6 @@ public class AuthService {
         loginCode.setExpiresAt(Instant.now().plus(otpExpiryMinutes, ChronoUnit.MINUTES));
         loginCode.setUsed(false);
         loginCodeRepository.save(loginCode);
-
-        userAccountRepository.findByEmail(normalizedEmail).orElseGet(() -> {
-            UserAccount user = new UserAccount();
-            user.setEmail(normalizedEmail);
-            user.setDisplayName(displayName == null || displayName.isBlank() ? normalizedEmail.split("@")[0] : displayName);
-            user.setEmailVerified(false);
-            return userAccountRepository.save(user);
-        });
 
         return Map.of(
             "message", "Login code generated. Replace this with email delivery in production.",
@@ -87,7 +102,8 @@ public class AuthService {
             "user", Map.of(
                 "id", user.getId(),
                 "displayName", user.getDisplayName(),
-                "email", user.getEmail()
+                "email", user.getEmail(),
+                "profileImageUrl", user.getProfileImageKey() == null ? "" : "/media/" + user.getProfileImageKey()
             )
         );
     }

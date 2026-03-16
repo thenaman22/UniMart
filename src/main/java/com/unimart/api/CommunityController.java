@@ -44,6 +44,34 @@ public class CommunityController {
         return communityRepository.findAll().stream().map(this::toCommunityCard).toList();
     }
 
+    @GetMapping("/{communityId}")
+    public Map<String, Object> communityDetail(@PathVariable Long communityId, @CurrentUser AuthContext authContext) {
+        Community community = communityRepository.findById(communityId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Community not found"));
+
+        Map<String, Object> payload = toCommunityCard(community);
+        if (authContext == null) {
+            return payload;
+        }
+
+        return membershipService.activeMemberships(authContext.user()).stream()
+            .filter(membership -> membership.getCommunity().getId().equals(communityId))
+            .findFirst()
+            .<Map<String, Object>>map(membership -> Map.of(
+                "id", community.getId(),
+                "slug", community.getSlug(),
+                "name", community.getName(),
+                "description", community.getDescription(),
+                "privateCommunity", community.isPrivateCommunity(),
+                "membership", Map.of(
+                    "membershipId", membership.getId(),
+                    "role", membership.getRole().name(),
+                    "status", membership.getStatus().name()
+                )
+            ))
+            .orElse(payload);
+    }
+
     @PostMapping("/{communityId}/join-by-domain")
     public Map<String, Object> joinByDomain(@PathVariable Long communityId, @CurrentUser AuthContext authContext) {
         requireAuth(authContext);
@@ -93,7 +121,8 @@ public class CommunityController {
             "id", community.getId(),
             "slug", community.getSlug(),
             "name", community.getName(),
-            "description", community.getDescription()
+            "description", community.getDescription(),
+            "privateCommunity", community.isPrivateCommunity()
         );
     }
 

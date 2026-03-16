@@ -5,6 +5,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -22,7 +23,7 @@ public class ListingDtos {
         @NotNull @DecimalMin("0.0") BigDecimal price,
         @NotBlank String category,
         @NotBlank String itemCondition,
-        @Valid @NotEmpty List<ListingMediaInput> media
+        @Valid @NotEmpty @Size(max = 5) List<ListingMediaInput> media
     ) {}
 
     public record UpdateListingRequest(

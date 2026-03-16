@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CommunityDomainRepository extends JpaRepository<CommunityDomain, Long> {
     List<CommunityDomain> findByEmailDomain(String emailDomain);
+    List<CommunityDomain> findByCommunityId(Long communityId);
 }
