@@ -8,6 +8,7 @@ public class ProfileDtos {
         @NotBlank String displayName,
         @Size(max = 1000) String bio,
         String phoneNumber,
-        String location
+        String location,
+        boolean publicPhoneVisible
     ) {}
 }

@@ -7,3 +7,14 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+
+app:
+  auth:
+    otp-expiry-minutes: 15
+  media:
+    max-file-size-bytes: 26214400
+    allowed-image-types: image/jpeg,image/png,image/webp
+    allowed-video-types: video/mp4,video/webm
+    storage-path: build/test-uploads
+  seed:
+    refresh-demo-data: false

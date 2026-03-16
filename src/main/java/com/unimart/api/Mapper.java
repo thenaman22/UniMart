@@ -33,6 +33,7 @@ public final class Mapper {
         return Map.ofEntries(
             Map.entry("id", listing.getId()),
             Map.entry("communityId", listing.getCommunity().getId()),
+            Map.entry("sellerId", listing.getSeller().getId()),
             Map.entry("title", listing.getTitle()),
             Map.entry("description", listing.getDescription()),
             Map.entry("price", listing.getPrice()),
@@ -98,7 +99,7 @@ public final class Mapper {
         );
     }
 
-    public static Map<String, Object> profile(UserAccount user) {
+    public static Map<String, Object> selfProfile(UserAccount user) {
         return Map.of(
             "id", user.getId(),
             "displayName", user.getDisplayName(),
@@ -106,7 +107,20 @@ public final class Mapper {
             "bio", user.getBio() == null ? "" : user.getBio(),
             "phoneNumber", user.getPhoneNumber() == null ? "" : user.getPhoneNumber(),
             "location", user.getLocation() == null ? "" : user.getLocation(),
+            "publicPhoneVisible", user.isPublicPhoneVisible(),
             "emailVerified", user.isEmailVerified(),
+            "profileImageUrl", user.getProfileImageKey() == null ? "" : "/media/" + user.getProfileImageKey()
+        );
+    }
+
+    public static Map<String, Object> publicProfile(UserAccount user) {
+        return Map.of(
+            "id", user.getId(),
+            "displayName", user.getDisplayName(),
+            "email", user.getEmail(),
+            "bio", user.getBio() == null ? "" : user.getBio(),
+            "phoneNumber", user.isPublicPhoneVisible() && user.getPhoneNumber() != null ? user.getPhoneNumber() : "",
+            "location", user.getLocation() == null ? "" : user.getLocation(),
             "profileImageUrl", user.getProfileImageKey() == null ? "" : "/media/" + user.getProfileImageKey()
         );
     }

@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -106,6 +107,12 @@ public class ListingController {
             request.itemCondition()
         );
         return Mapper.listingSummary(listing, listingService.mediaForListing(listing.getId(), authContext.user()));
+    }
+
+    @DeleteMapping("/{listingId}")
+    public void delete(@PathVariable Long listingId, @CurrentUser AuthContext authContext) {
+        requireAuth(authContext);
+        listingService.deleteListing(listingId, authContext.user());
     }
 
     @PostMapping("/{listingId}/reports")

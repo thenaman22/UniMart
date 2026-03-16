@@ -29,6 +29,9 @@ public class UserAccount extends BaseEntity {
     @Column
     private String profileImageKey;
 
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean publicPhoneVisible = false;
+
     public String getDisplayName() {
         return displayName;
     }
@@ -83,5 +86,13 @@ public class UserAccount extends BaseEntity {
 
     public void setProfileImageKey(String profileImageKey) {
         this.profileImageKey = profileImageKey;
+    }
+
+    public boolean isPublicPhoneVisible() {
+        return publicPhoneVisible;
+    }
+
+    public void setPublicPhoneVisible(boolean publicPhoneVisible) {
+        this.publicPhoneVisible = publicPhoneVisible;
     }
 }

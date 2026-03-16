@@ -10,4 +10,5 @@ public interface MembershipRepository extends JpaRepository<Membership, Long> {
     Optional<Membership> findByUserIdAndCommunityId(Long userId, Long communityId);
     List<Membership> findByUserIdAndStatus(Long userId, MembershipStatus status);
     List<Membership> findByCommunityIdAndStatus(Long communityId, MembershipStatus status);
+    List<Membership> findByUserIdInAndStatus(List<Long> userIds, MembershipStatus status);
 }

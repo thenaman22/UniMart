@@ -13,7 +13,9 @@ import com.unimart.repository.InviteLinkRepository;
 import com.unimart.repository.MembershipRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -58,6 +60,22 @@ public class MembershipService {
 
     public List<Membership> activeMemberships(UserAccount user) {
         return membershipRepository.findByUserIdAndStatus(user.getId(), MembershipStatus.ACTIVE);
+    }
+
+    public List<Long> activeCommunityIds(UserAccount user) {
+        return activeMemberships(user).stream()
+            .map(membership -> membership.getCommunity().getId())
+            .toList();
+    }
+
+    public List<Long> sharedActiveCommunityIds(UserAccount firstUser, UserAccount secondUser) {
+        Set<Long> firstIds = new HashSet<>(activeCommunityIds(firstUser));
+        if (firstIds.isEmpty()) {
+            return List.of();
+        }
+        return activeCommunityIds(secondUser).stream()
+            .filter(firstIds::contains)
+            .toList();
     }
 
     @Transactional

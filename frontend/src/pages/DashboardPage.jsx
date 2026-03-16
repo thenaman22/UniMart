@@ -115,7 +115,10 @@ export function DashboardPage({ user, communities }) {
                 <div className="feed-card-header">
                   <div>
                     <h3>{listing.title}</h3>
-                    <p className="feed-meta">{listing.sellerName} • {listing.category} • {listing.itemCondition}</p>
+                    <p className="feed-meta">
+                      <Link className="text-link" to={`/users/${listing.sellerId}`}>{listing.sellerName}</Link>
+                      {' '}• {listing.category} • {listing.itemCondition}
+                    </p>
                   </div>
                   <p className="price">${listing.price}</p>
                 </div>

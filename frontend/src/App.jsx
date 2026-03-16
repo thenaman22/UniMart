@@ -8,6 +8,8 @@ import { CreateListingPage } from './pages/CreateListingPage'
 import { ModerationPage } from './pages/ModerationPage'
 import { CommunitiesPage } from './pages/CommunitiesPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { UserProfilePage } from './pages/UserProfilePage'
+import { EditListingPage } from './pages/EditListingPage'
 
 function HomeIcon() {
   return (
@@ -77,6 +79,12 @@ function pageCopy(pathname) {
   }
   if (pathname === '/profile') {
     return { eyebrow: 'Account', title: 'Your profile' }
+  }
+  if (pathname.startsWith('/users/')) {
+    return { eyebrow: 'Seller', title: 'Seller profile' }
+  }
+  if (pathname.startsWith('/listings/') && pathname.endsWith('/edit')) {
+    return { eyebrow: 'Seller studio', title: 'Edit listing' }
   }
   if (pathname.startsWith('/communities/')) {
     return { eyebrow: 'Community', title: 'Community marketplace' }
@@ -175,10 +183,7 @@ export default function App() {
 
   function queueSidebarCollapse() {
     clearSidebarTimer()
-    collapseTimerRef.current = window.setTimeout(() => {
-      setSidebarExpanded(false)
-      collapseTimerRef.current = null
-    }, 1000)
+    setSidebarExpanded(false)
   }
 
   useEffect(() => {
@@ -314,7 +319,9 @@ export default function App() {
             <Route path="/communities" element={<CommunitiesPage user={user} communities={communities} />} />
             <Route path="/communities/:communityId" element={<CommunityPage user={user} communities={communities} />} />
             <Route path="/profile" element={<ProfilePage user={user} onProfileUpdated={onProfileUpdated} />} />
+            <Route path="/users/:userId" element={<UserProfilePage user={user} />} />
             <Route path="/sell" element={<CreateListingPage user={user} communities={communities} />} />
+            <Route path="/listings/:listingId/edit" element={<EditListingPage user={user} communities={communities} />} />
             <Route path="/moderation" element={<ModerationPage user={user} communities={communities} />} />
           </Routes>
         </main>

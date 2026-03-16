@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { ListingPreview } from '../components/ListingPreview'
 
@@ -102,7 +102,7 @@ export function CommunityPage({ user, communities }) {
             <p className="price">${listing.price}</p>
             <h3>{listing.title}</h3>
             <p>{listing.description}</p>
-            <small>{listing.sellerName}</small>
+            <small><Link className="text-link" to={`/users/${listing.sellerId}`}>{listing.sellerName}</Link></small>
           </article>
         ))}
       </div>

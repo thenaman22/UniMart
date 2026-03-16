@@ -76,9 +76,7 @@ public class ListingService {
         BigDecimal maxPrice,
         ListingStatus status
     ) {
-        List<Long> communityIds = membershipService.activeMemberships(user).stream()
-            .map(membership -> membership.getCommunity().getId())
-            .toList();
+        List<Long> communityIds = membershipService.activeCommunityIds(user);
         if (communityIds.isEmpty()) {
             return List.of();
         }
@@ -135,6 +133,38 @@ public class ListingService {
         listing.setCategory(category);
         listing.setItemCondition(itemCondition);
         return listing;
+    }
+
+    public List<Listing> listingsForOwner(UserAccount user) {
+        List<Long> communityIds = membershipService.activeCommunityIds(user);
+        if (communityIds.isEmpty()) {
+            return List.of();
+        }
+        return listingRepository.findBySellerIdAndCommunityIdInOrderByCreatedAtDesc(user.getId(), communityIds);
+    }
+
+    public List<Listing> activeListingsForSellerProfile(UserAccount viewer, UserAccount seller) {
+        List<Long> sharedCommunityIds = membershipService.sharedActiveCommunityIds(viewer, seller);
+        if (sharedCommunityIds.isEmpty()) {
+            return List.of();
+        }
+        return listingRepository.findBySellerIdAndCommunityIdInAndStatusOrderByCreatedAtDesc(
+            seller.getId(),
+            sharedCommunityIds,
+            ListingStatus.ACTIVE
+        );
+    }
+
+    @Transactional
+    public void deleteListing(Long listingId, UserAccount user) {
+        Listing listing = listingRepository.findById(listingId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Listing not found"));
+        membershipService.requireActiveMembership(user.getId(), listing.getCommunity().getId());
+        if (!listing.getSeller().getId().equals(user.getId())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Only the seller can delete this listing");
+        }
+        listingMediaRepository.deleteAll(listingMediaRepository.findByListingId(listingId));
+        listingRepository.delete(listing);
     }
 
     public List<ListingMedia> mediaForListing(Long listingId, UserAccount user) {

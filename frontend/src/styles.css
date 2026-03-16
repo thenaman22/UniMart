@@ -337,6 +337,13 @@ h3 {
   background: var(--soft);
 }
 
+.text-link {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 65%, transparent);
+  text-underline-offset: 0.18em;
+}
+
 .profile-chip {
   display: inline-flex;
   align-items: center;
@@ -797,6 +804,10 @@ h3 {
   max-width: 720px;
 }
 
+.profile-layout {
+  align-items: start;
+}
+
 .profile-avatar-block {
   display: grid;
   gap: 0.75rem;
@@ -832,6 +843,89 @@ h3 {
   border-radius: 999px;
   background: var(--soft-strong);
   font-size: 0.9rem;
+}
+
+.checkbox-row {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.checkbox-row input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+}
+
+.checkbox-row span {
+  font-weight: 600;
+}
+
+.profile-listing-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.profile-listing-body {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1rem 1.05rem 1.15rem;
+}
+
+.listing-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.listing-heading-row h3 {
+  margin-bottom: 0.2rem;
+}
+
+.listing-heading-meta {
+  display: grid;
+  justify-items: end;
+  gap: 0.4rem;
+}
+
+.danger-button {
+  color: var(--error-text);
+}
+
+.seller-hero {
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-strong) 90%, transparent), color-mix(in srgb, var(--surface) 82%, transparent)),
+    radial-gradient(circle at top right, rgba(252, 163, 17, 0.16), transparent 34%);
+}
+
+.seller-profile-header {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.seller-profile-copy {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.seller-profile-copy h1,
+.seller-profile-copy p {
+  margin: 0;
+}
+
+.seller-contact-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  color: var(--muted-text);
+}
+
+.seller-contact-list span {
+  padding: 0.45rem 0.75rem;
+  border-radius: 999px;
+  background: var(--soft);
 }
 
 @media (max-width: 1100px) {
@@ -919,6 +1013,16 @@ h3 {
 
   .feed-intro-stats {
     justify-content: flex-start;
+  }
+
+  .seller-profile-header,
+  .listing-heading-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .listing-heading-meta {
+    justify-items: start;
   }
 }
 
