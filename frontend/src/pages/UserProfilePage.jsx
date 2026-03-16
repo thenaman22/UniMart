@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ListingPreview } from '../components/ListingPreview'
 import { api } from '../api'
 
@@ -81,6 +81,13 @@ export function UserProfilePage({ user }) {
                   <p className="price">${listing.price}</p>
                 </div>
                 <p>{listing.description}</p>
+                {user && listing.sellerId !== user.id && (
+                  <div className="button-row wrap-row">
+                    <Link className="button-link dark" to={`/messages?view=buyer&compose=${listing.id}`}>
+                      Message seller
+                    </Link>
+                  </div>
+                )}
               </div>
             </article>
           ))}

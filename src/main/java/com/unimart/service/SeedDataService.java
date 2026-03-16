@@ -15,7 +15,9 @@ import com.unimart.domain.UserAccount;
 import com.unimart.repository.CommunityDomainRepository;
 import com.unimart.repository.CommunityRepository;
 import com.unimart.repository.InviteLinkRepository;
+import com.unimart.repository.ListingConversationRepository;
 import com.unimart.repository.ListingMediaRepository;
+import com.unimart.repository.ListingMessageRepository;
 import com.unimart.repository.ListingRepository;
 import com.unimart.repository.LoginCodeRepository;
 import com.unimart.repository.MembershipRepository;
@@ -51,6 +53,8 @@ public class SeedDataService {
     private final MembershipRepository membershipRepository;
     private final ListingRepository listingRepository;
     private final ListingMediaRepository listingMediaRepository;
+    private final ListingConversationRepository listingConversationRepository;
+    private final ListingMessageRepository listingMessageRepository;
     private final InviteLinkRepository inviteLinkRepository;
     private final ReportRepository reportRepository;
     private final LoginCodeRepository loginCodeRepository;
@@ -65,6 +69,8 @@ public class SeedDataService {
         MembershipRepository membershipRepository,
         ListingRepository listingRepository,
         ListingMediaRepository listingMediaRepository,
+        ListingConversationRepository listingConversationRepository,
+        ListingMessageRepository listingMessageRepository,
         InviteLinkRepository inviteLinkRepository,
         ReportRepository reportRepository,
         LoginCodeRepository loginCodeRepository,
@@ -78,6 +84,8 @@ public class SeedDataService {
         this.membershipRepository = membershipRepository;
         this.listingRepository = listingRepository;
         this.listingMediaRepository = listingMediaRepository;
+        this.listingConversationRepository = listingConversationRepository;
+        this.listingMessageRepository = listingMessageRepository;
         this.inviteLinkRepository = inviteLinkRepository;
         this.reportRepository = reportRepository;
         this.loginCodeRepository = loginCodeRepository;
@@ -264,6 +272,8 @@ public class SeedDataService {
 
     private void clearDemoData() {
         reportRepository.deleteAllInBatch();
+        listingMessageRepository.deleteAllInBatch();
+        listingConversationRepository.deleteAllInBatch();
         listingMediaRepository.deleteAllInBatch();
         listingRepository.deleteAllInBatch();
         inviteLinkRepository.deleteAllInBatch();

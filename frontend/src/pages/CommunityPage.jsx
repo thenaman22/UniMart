@@ -103,6 +103,13 @@ export function CommunityPage({ user, communities }) {
             <h3>{listing.title}</h3>
             <p>{listing.description}</p>
             <small><Link className="text-link" to={`/users/${listing.sellerId}`}>{listing.sellerName}</Link></small>
+            {user && listing.sellerId !== user.id && (
+              <div className="button-row wrap-row">
+                <Link className="button-link dark" to={`/messages?view=buyer&compose=${listing.id}`}>
+                  Message seller
+                </Link>
+              </div>
+            )}
           </article>
         ))}
       </div>
