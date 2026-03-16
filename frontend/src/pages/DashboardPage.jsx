@@ -123,6 +123,13 @@ export function DashboardPage({ user, communities }) {
                   <p className="price">${listing.price}</p>
                 </div>
                 <p>{listing.description}</p>
+                {user && listing.sellerId !== user.id && (
+                  <div className="button-row wrap-row">
+                    <Link className="button-link dark" to={`/messages?view=buyer&compose=${listing.id}`}>
+                      Message seller
+                    </Link>
+                  </div>
+                )}
               </div>
             </article>
           ))}

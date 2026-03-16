@@ -11,6 +11,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { ProfileEditPage } from './pages/ProfileEditPage'
 import { UserProfilePage } from './pages/UserProfilePage'
 import { EditListingPage } from './pages/EditListingPage'
+import { MessagesPage } from './pages/MessagesPage'
 
 function HomeIcon() {
   return (
@@ -52,6 +53,14 @@ function ProfileIcon() {
   )
 }
 
+function MessagesIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 5h16a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H8l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm3.2 4.5a1 1 0 1 0 0 2h9.6a1 1 0 1 0 0-2zm0 4a1 1 0 1 0 0 2h6.4a1 1 0 1 0 0-2z" />
+    </svg>
+  )
+}
+
 function ThemeIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -81,6 +90,9 @@ function pageCopy(pathname) {
   if (pathname === '/profile') {
     return { eyebrow: 'Account', title: 'Your profile' }
   }
+  if (pathname === '/messages') {
+    return { eyebrow: 'Inbox', title: 'Product messages' }
+  }
   if (pathname === '/profile/edit') {
     return { eyebrow: 'Account', title: 'Edit profile' }
   }
@@ -102,6 +114,11 @@ export default function App() {
     return raw ? JSON.parse(raw) : null
   })
   const [communities, setCommunities] = useState([])
+  const [messageSummary, setMessageSummary] = useState({
+    sellerUnreadCount: 0,
+    buyerUnreadCount: 0,
+    totalUnreadCount: 0
+  })
   const [searchText, setSearchText] = useState('')
   const [theme, setTheme] = useState(() => localStorage.getItem('unimart-theme') || 'light')
   const [sidebarExpanded, setSidebarExpanded] = useState(() => window.innerWidth <= 900)
@@ -119,6 +136,43 @@ export default function App() {
         setUser(null)
       })
   }, [user])
+
+  useEffect(() => {
+    if (!user) {
+      setMessageSummary({
+        sellerUnreadCount: 0,
+        buyerUnreadCount: 0,
+        totalUnreadCount: 0
+      })
+      return
+    }
+
+    let cancelled = false
+
+    async function loadSummary() {
+      try {
+        const summary = await api('/messages/summary')
+        if (!cancelled) {
+          setMessageSummary(summary)
+        }
+      } catch {
+        if (!cancelled) {
+          setMessageSummary({
+            sellerUnreadCount: 0,
+            buyerUnreadCount: 0,
+            totalUnreadCount: 0
+          })
+        }
+      }
+    }
+
+    loadSummary()
+    const timer = window.setInterval(loadSummary, 30000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [user, location.pathname])
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -157,6 +211,11 @@ export default function App() {
     localStorage.removeItem('unimart-user')
     setUser(null)
     setCommunities([])
+    setMessageSummary({
+      sellerUnreadCount: 0,
+      buyerUnreadCount: 0,
+      totalUnreadCount: 0
+    })
     navigate('/auth')
   }
 
@@ -212,6 +271,7 @@ export default function App() {
     { to: '/', label: 'Home', icon: HomeIcon, end: true },
     { to: '/communities', label: 'Communities', icon: CommunitiesIcon },
     { to: '/sell', label: 'Sell', icon: SellIcon },
+    { to: '/messages', label: 'Messages', icon: MessagesIcon },
     { to: '/moderation', label: 'Moderation', icon: ShieldIcon },
     { to: '/profile', label: 'Profile', icon: ProfileIcon }
   ]
@@ -243,7 +303,14 @@ export default function App() {
                   to={item.to}
                   end={item.end}
                 >
-                  <span className="sidebar-icon"><Icon /></span>
+                  <span className="sidebar-icon">
+                    <Icon />
+                    {item.to === '/messages' && messageSummary.totalUnreadCount > 0 && (
+                      <span className="sidebar-notification-badge">
+                        {messageSummary.totalUnreadCount > 9 ? '9+' : messageSummary.totalUnreadCount}
+                      </span>
+                    )}
+                  </span>
                   <span className="sidebar-copy">{item.label}</span>
                 </NavLink>
               )
@@ -314,6 +381,7 @@ export default function App() {
             <Route path="/profile/edit" element={<ProfileEditPage user={user} onProfileUpdated={onProfileUpdated} />} />
             <Route path="/users/:userId" element={<UserProfilePage user={user} />} />
             <Route path="/sell" element={<CreateListingPage user={user} communities={communities} />} />
+            <Route path="/messages" element={<MessagesPage user={user} />} />
             <Route path="/listings/:listingId/edit" element={<EditListingPage user={user} communities={communities} />} />
             <Route path="/moderation" element={<ModerationPage user={user} communities={communities} />} />
           </Routes>
