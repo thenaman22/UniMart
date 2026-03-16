@@ -8,6 +8,7 @@ import { CreateListingPage } from './pages/CreateListingPage'
 import { ModerationPage } from './pages/ModerationPage'
 import { CommunitiesPage } from './pages/CommunitiesPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { ProfileEditPage } from './pages/ProfileEditPage'
 import { UserProfilePage } from './pages/UserProfilePage'
 import { EditListingPage } from './pages/EditListingPage'
 
@@ -80,6 +81,9 @@ function pageCopy(pathname) {
   if (pathname === '/profile') {
     return { eyebrow: 'Account', title: 'Your profile' }
   }
+  if (pathname === '/profile/edit') {
+    return { eyebrow: 'Account', title: 'Edit profile' }
+  }
   if (pathname.startsWith('/users/')) {
     return { eyebrow: 'Seller', title: 'Seller profile' }
   }
@@ -100,7 +104,7 @@ export default function App() {
   const [communities, setCommunities] = useState([])
   const [searchText, setSearchText] = useState('')
   const [theme, setTheme] = useState(() => localStorage.getItem('unimart-theme') || 'light')
-  const [sidebarExpanded, setSidebarExpanded] = useState(true)
+  const [sidebarExpanded, setSidebarExpanded] = useState(() => window.innerWidth <= 900)
   const collapseTimerRef = useRef(null)
   const navigate = useNavigate()
   const location = useLocation()
@@ -227,7 +231,6 @@ export default function App() {
               <span className="brand-mark">U</span>
               <span className="sidebar-copy">UniMart</span>
             </Link>
-            <p className="sidebar-tagline sidebar-copy">A calmer campus marketplace for trusted communities.</p>
           </div>
 
           <nav className="sidebar-nav" aria-label="Primary navigation">
@@ -289,18 +292,7 @@ export default function App() {
 
           <div className="topbar-right">
             {isAuthed ? (
-              <Link className="profile-chip profile-chip-compact" to="/profile">
-                <span className="topbar-profile">
-                  {user.profileImageUrl ? (
-                    <img src={`http://localhost:8080${user.profileImageUrl}`} alt={user.displayName} />
-                  ) : (
-                    <span className="topbar-avatar-fallback">{user.displayName?.[0] || '?'}</span>
-                  )}
-                </span>
-                <span>
-                  <strong>{user.displayName}</strong>
-                </span>
-              </Link>
+              null
             ) : (
               <>
                 <button className="ghost theme-toggle" onClick={toggleTheme}>
@@ -318,7 +310,8 @@ export default function App() {
             <Route path="/" element={<DashboardPage user={user} communities={communities} />} />
             <Route path="/communities" element={<CommunitiesPage user={user} communities={communities} />} />
             <Route path="/communities/:communityId" element={<CommunityPage user={user} communities={communities} />} />
-            <Route path="/profile" element={<ProfilePage user={user} onProfileUpdated={onProfileUpdated} />} />
+            <Route path="/profile" element={<ProfilePage user={user} />} />
+            <Route path="/profile/edit" element={<ProfileEditPage user={user} onProfileUpdated={onProfileUpdated} />} />
             <Route path="/users/:userId" element={<UserProfilePage user={user} />} />
             <Route path="/sell" element={<CreateListingPage user={user} communities={communities} />} />
             <Route path="/listings/:listingId/edit" element={<EditListingPage user={user} communities={communities} />} />

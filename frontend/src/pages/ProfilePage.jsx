@@ -1,94 +1,45 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { ListingPreview } from '../components/ListingPreview'
 
-export function ProfilePage({ user, onProfileUpdated }) {
-  const [form, setForm] = useState({
-    displayName: '',
-    email: '',
-    bio: '',
-    phoneNumber: '',
-    location: '',
-    publicPhoneVisible: false
-  })
+export function ProfilePage({ user }) {
+  const [profile, setProfile] = useState(null)
   const [listings, setListings] = useState([])
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
-  const [picturePreview, setPicturePreview] = useState('')
 
   async function loadProfile() {
     const response = await api('/profile')
-    const profile = response.profile
-    setForm({
-      displayName: profile.displayName || '',
-      email: profile.email || '',
-      bio: profile.bio || '',
-      phoneNumber: profile.phoneNumber || '',
-      location: profile.location || '',
-      publicPhoneVisible: Boolean(profile.publicPhoneVisible)
-    })
-    setPicturePreview(profile.profileImageUrl || '')
+    setProfile(response.profile)
     setListings(response.myListings || [])
   }
 
   useEffect(() => {
     if (!user) return
-    loadProfile()
-      .catch(err => setError(err.message))
+    loadProfile().catch(err => setError(err.message))
   }, [user])
 
+  const stats = useMemo(() => {
+    const active = listings.filter(listing => listing.status === 'ACTIVE').length
+    const sold = listings.filter(listing => listing.status === 'SOLD').length
+    return {
+      total: listings.length,
+      active,
+      sold
+    }
+  }, [listings])
+
   if (!user) {
-    return <section className="panel"><p>Please sign in to edit your profile.</p></section>
+    return <section className="panel"><p>Please sign in to view your profile.</p></section>
   }
 
-  async function submit(event) {
-    event.preventDefault()
-    setStatus('')
-    setError('')
-    try {
-      const profile = await api('/profile', {
-        method: 'PATCH',
-        body: JSON.stringify({
-          displayName: form.displayName,
-          bio: form.bio,
-          phoneNumber: form.phoneNumber,
-          location: form.location,
-          publicPhoneVisible: form.publicPhoneVisible
-        })
-      })
-      onProfileUpdated(profile)
-      setPicturePreview(profile.profileImageUrl || '')
-      setStatus('Profile updated successfully.')
-    } catch (err) {
-      setError(err.message)
-    }
+  if (error && !profile) {
+    return <section className="panel"><p className="error">{error}</p></section>
   }
 
-  async function uploadPicture(event) {
-    const file = event.target.files?.[0]
-    if (!file) return
-    setStatus('')
-    setError('')
-    try {
-      const body = new FormData()
-      body.append('file', file)
-      const token = localStorage.getItem('unimart-token')
-      const response = await fetch('http://localhost:8080/profile/picture', {
-        method: 'POST',
-        headers: token ? { 'X-Auth-Token': token } : {},
-        body
-      })
-      const profile = await response.json()
-      if (!response.ok) {
-        throw new Error(profile.message || 'Profile picture upload failed')
-      }
-      onProfileUpdated(profile)
-      setPicturePreview(profile.profileImageUrl || '')
-      setStatus('Profile picture updated.')
-    } catch (err) {
-      setError(err.message)
-    }
+  if (!profile) {
+    return <section className="panel"><p>Loading your profile...</p></section>
   }
 
   async function updateListingStatus(listingId, nextStatus, successMessage) {
@@ -119,65 +70,53 @@ export function ProfilePage({ user, onProfileUpdated }) {
   }
 
   return (
-    <div className="social-layout profile-layout">
-      <section className="panel">
-        <div className="panel-header panel-stack-mobile">
-          <div>
-            <p className="eyebrow">Your profile</p>
-            <h1>Account and seller settings</h1>
-            <p>This information belongs to your account. Public seller details appear to people who share a community with you.</p>
+    <div className="stack profile-page-stack">
+      <section className="panel seller-hero own-profile-hero">
+        <div className="seller-profile-header">
+          <div className="profile-avatar profile-avatar-large">
+            {profile.profileImageUrl ? (
+              <img src={`http://localhost:8080${profile.profileImageUrl}`} alt={profile.displayName} />
+            ) : (
+              <span>{profile.displayName?.[0] || '?'}</span>
+            )}
           </div>
-          <div className="profile-avatar-block">
-            <div className="profile-avatar">
-              {picturePreview ? <img src={`http://localhost:8080${picturePreview}`} alt="Profile" /> : <span>{form.displayName?.[0] || '?'}</span>}
+
+          <div className="seller-profile-copy seller-profile-copy-wide">
+            <div className="seller-name-row">
+              <h1>{profile.displayName}</h1>
+              <Link className="button-link dark" to="/profile/edit">Edit profile</Link>
+              <a className="button-link" href="#my-listings">Manage listings</a>
             </div>
-            <input type="file" accept="image/jpeg,image/png,image/webp" onChange={uploadPicture} />
+
+            <div className="seller-stats-row">
+              <span><strong>{stats.total}</strong> posts</span>
+              <span><strong>{stats.active}</strong> active</span>
+              <span><strong>{stats.sold}</strong> sold</span>
+            </div>
+
+            <div className="seller-bio-block">
+              <strong>{profile.email}</strong>
+              {profile.location && <span>{profile.location}</span>}
+              {profile.publicPhoneVisible && profile.phoneNumber && <span>{profile.phoneNumber}</span>}
+              <p>{profile.bio || 'Add a bio from your edit page so other members know what you sell.'}</p>
+            </div>
           </div>
         </div>
-
-        <form className="stack profile-form" onSubmit={submit}>
-          <label>
-            <span>Display name</span>
-            <input value={form.displayName} onChange={event => setForm({ ...form, displayName: event.target.value })} />
-          </label>
-          <label>
-            <span>Email</span>
-            <input value={form.email} disabled />
-          </label>
-          <label>
-            <span>Bio</span>
-            <textarea value={form.bio} onChange={event => setForm({ ...form, bio: event.target.value })} rows="5" />
-          </label>
-          <label>
-            <span>Phone number</span>
-            <input value={form.phoneNumber} onChange={event => setForm({ ...form, phoneNumber: event.target.value })} />
-          </label>
-          <label>
-            <span>Location</span>
-            <input value={form.location} onChange={event => setForm({ ...form, location: event.target.value })} />
-          </label>
-          <label className="checkbox-row">
-            <input
-              type="checkbox"
-              checked={form.publicPhoneVisible}
-              onChange={event => setForm({ ...form, publicPhoneVisible: event.target.checked })}
-            />
-            <span>Show phone number on your public seller profile</span>
-          </label>
-          <button type="submit">Save profile</button>
-        </form>
-
-        {status && <p className="success">{status}</p>}
-        {error && <p className="error">{error}</p>}
       </section>
 
-      <aside className="panel sidebar-panel">
-        <div className="sidebar-section">
-          <p className="eyebrow">Seller hub</p>
-          <h2>My listings</h2>
-          <p className="feed-intro-copy">Quick actions live here, and full edits open a dedicated editor.</p>
+      {status && <p className="success">{status}</p>}
+      {error && <p className="error">{error}</p>}
+
+      <section id="my-listings" className="panel">
+        <div className="feed-header profile-section-header">
+          <div>
+            <p className="eyebrow">Your marketplace</p>
+            <h2>Your listings</h2>
+          </div>
+          <Link className="button-link dark" to="/sell">Create listing</Link>
         </div>
-        <div className="stack">
+
+        <div className="listing-grid profile-grid">
           {listings.map(listing => (
             <article key={listing.id} className="listing-card profile-listing-card">
               <ListingPreview listing={listing} mode="grid" />
@@ -219,7 +158,7 @@ export function ProfilePage({ user, onProfileUpdated }) {
           ))}
           {listings.length === 0 && <p>You have not created any listings yet.</p>}
         </div>
-      </aside>
+      </section>
     </div>
   )
 }

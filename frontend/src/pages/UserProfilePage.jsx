@@ -37,24 +37,25 @@ export function UserProfilePage({ user }) {
   }
 
   return (
-    <div className="stack">
-      <section className="panel seller-hero">
+    <div className="stack profile-page-stack">
+      <section className="panel seller-hero own-profile-hero">
         <div className="seller-profile-header">
-          <div className="profile-avatar">
+          <div className="profile-avatar profile-avatar-large">
             {profile.profileImageUrl ? (
               <img src={`http://localhost:8080${profile.profileImageUrl}`} alt={profile.displayName} />
             ) : (
               <span>{profile.displayName?.[0] || '?'}</span>
             )}
           </div>
-          <div className="seller-profile-copy">
-            <p className="eyebrow">Seller profile</p>
-            <h1>{profile.displayName}</h1>
-            <p>{profile.bio || 'This seller has not added a bio yet.'}</p>
-            <div className="seller-contact-list">
-              <span>{profile.email}</span>
+          <div className="seller-profile-copy seller-profile-copy-wide">
+            <div className="seller-name-row">
+              <h1>{profile.displayName}</h1>
+            </div>
+            <div className="seller-bio-block">
+              <strong>{profile.email}</strong>
               {profile.location && <span>{profile.location}</span>}
               {profile.phoneNumber && <span>{profile.phoneNumber}</span>}
+              <p>{profile.bio || 'This seller has not added a bio yet.'}</p>
             </div>
           </div>
         </div>
