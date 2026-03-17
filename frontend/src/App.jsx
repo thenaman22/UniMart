@@ -267,6 +267,7 @@ export default function App() {
 
   const isAuthed = Boolean(user)
   const currentPage = pageCopy(location.pathname)
+  const isMessagesRoute = location.pathname === '/messages'
   const primaryNav = [
     { to: '/', label: 'Home', icon: HomeIcon, end: true },
     { to: '/communities', label: 'Communities', icon: CommunitiesIcon },
@@ -331,47 +332,49 @@ export default function App() {
       )}
 
       <div className="app-main">
-        <header className="topbar social-topbar">
-          <div className="topbar-left">
-            {isAuthed ? (
-              <div className="page-title-block">
-                <p className="eyebrow">{currentPage.eyebrow}</p>
-                <h1>{currentPage.title}</h1>
-              </div>
-            ) : (
-              <>
-                <Link className="brand" to="/">UniMart</Link>
-                <Link className="nav-pill" to="/communities">Communities</Link>
-              </>
-            )}
-          </div>
+        {!isMessagesRoute && (
+          <header className="topbar social-topbar">
+            <div className="topbar-left">
+              {isAuthed ? (
+                <div className="page-title-block">
+                  <p className="eyebrow">{currentPage.eyebrow}</p>
+                  <h1>{currentPage.title}</h1>
+                </div>
+              ) : (
+                <>
+                  <Link className="brand" to="/">UniMart</Link>
+                  <Link className="nav-pill" to="/communities">Communities</Link>
+                </>
+              )}
+            </div>
 
-          <div className="topbar-center">
-            <form className="top-search" onSubmit={submitSearch}>
-              <input
-                value={searchText}
-                onChange={event => setSearchText(event.target.value)}
-                placeholder="Search listings, books, furniture, tech..."
-              />
-              <button type="submit">Search</button>
-            </form>
-          </div>
+            <div className="topbar-center">
+              <form className="top-search" onSubmit={submitSearch}>
+                <input
+                  value={searchText}
+                  onChange={event => setSearchText(event.target.value)}
+                  placeholder="Search listings, books, furniture, tech..."
+                />
+                <button type="submit">Search</button>
+              </form>
+            </div>
 
-          <div className="topbar-right">
-            {isAuthed ? (
-              null
-            ) : (
-              <>
-                <button className="ghost theme-toggle" onClick={toggleTheme}>
-                  {theme === 'dark' ? 'Light' : 'Dark'}
-                </button>
-                <Link className="icon-link" to="/auth">Sign in</Link>
-              </>
-            )}
-          </div>
-        </header>
+            <div className="topbar-right">
+              {isAuthed ? (
+                null
+              ) : (
+                <>
+                  <button className="ghost theme-toggle" onClick={toggleTheme}>
+                    {theme === 'dark' ? 'Light' : 'Dark'}
+                  </button>
+                  <Link className="icon-link" to="/auth">Sign in</Link>
+                </>
+              )}
+            </div>
+          </header>
+        )}
 
-        <main className="page social-page">
+        <main className={`page social-page${isMessagesRoute ? ' messages-workspace-page' : ''}`}>
           <Routes>
             <Route path="/auth" element={<AuthPage onLogin={onLogin} />} />
             <Route path="/" element={<DashboardPage user={user} communities={communities} />} />

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.unimart.domain.Community;
 import com.unimart.domain.Listing;
 import com.unimart.domain.ListingStatus;
+import com.unimart.domain.MediaType;
 import com.unimart.domain.Membership;
 import com.unimart.domain.MembershipRole;
 import com.unimart.domain.MembershipStatus;
@@ -18,7 +19,9 @@ import com.unimart.repository.MembershipRepository;
 import com.unimart.repository.UserAccountRepository;
 import com.unimart.service.ApiException;
 import com.unimart.service.MessagingService;
+import com.unimart.service.UploadService;
 import java.math.BigDecimal;
+import org.springframework.mock.web.MockMultipartFile;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -49,6 +52,9 @@ class MessagingServiceTests {
     @Autowired
     private ListingMessageRepository listingMessageRepository;
 
+    @Autowired
+    private UploadService uploadService;
+
     @Test
     void reusesConversationForRepeatBuyerMessagesOnSameListing() {
         UserAccount seller = saveUser("seller@uni.edu", "Seller");
@@ -58,8 +64,8 @@ class MessagingServiceTests {
         addMembership(buyer, community);
         Listing listing = saveListing(seller, community);
 
-        messagingService.startConversation(buyer, listing.getId(), "Hi, is this still available?");
-        messagingService.startConversation(buyer, listing.getId(), "Can you share pickup details?");
+        messagingService.startConversation(buyer, listing.getId(), "Hi, is this still available?", null);
+        messagingService.startConversation(buyer, listing.getId(), "Can you share pickup details?", null);
 
         var conversation = listingConversationRepository.findByListingIdAndBuyerId(listing.getId(), buyer.getId()).orElseThrow();
         var messages = listingMessageRepository.findByConversationIdOrderByCreatedAtAsc(conversation.getId());
@@ -80,16 +86,46 @@ class MessagingServiceTests {
         addMembership(buyer, community);
         Listing listing = saveListing(seller, community);
 
-        var detail = messagingService.startConversation(buyer, listing.getId(), "Interested in your listing.");
+        var detail = messagingService.startConversation(buyer, listing.getId(), "Interested in your listing.", null);
         listing.setStatus(ListingStatus.SOLD);
 
-        assertThatThrownBy(() -> messagingService.sendConversationMessage(seller, detail.conversation().getId(), "It sold this morning."))
+        assertThatThrownBy(() -> messagingService.sendConversationMessage(seller, detail.conversation().getId(), "It sold this morning.", null))
             .isInstanceOf(ApiException.class)
             .hasMessage("This listing is no longer accepting messages");
 
         var conversation = messagingService.conversationDetail(buyer, detail.conversation().getId());
         assertThat(conversation.readOnly()).isTrue();
         assertThat(conversation.messages()).hasSize(1);
+    }
+
+    @Test
+    void supportsImageMessagesWithoutText() {
+        UserAccount seller = saveUser("seller3@uni.edu", "Seller Three");
+        UserAccount buyer = saveUser("buyer3@uni.edu", "Buyer Three");
+        Community community = saveCommunity();
+        addMembership(seller, community);
+        addMembership(buyer, community);
+        Listing listing = saveListing(seller, community);
+
+        MockMultipartFile file = new MockMultipartFile("file", "bike.jpg", "image/jpeg", new byte[] {1, 2, 3, 4});
+        var upload = uploadService.storeFile(file);
+
+        var detail = messagingService.startConversation(
+            buyer,
+            listing.getId(),
+            "",
+            new MessagingService.MessageAttachment(
+                (String) upload.get("storageKey"),
+                (String) upload.get("contentType"),
+                ((Number) upload.get("fileSize")).longValue(),
+                MediaType.IMAGE
+            )
+        );
+
+        assertThat(detail.messages()).hasSize(1);
+        assertThat(detail.messages().get(0).getBody()).isEmpty();
+        assertThat(detail.messages().get(0).getAttachmentType()).isEqualTo(MediaType.IMAGE);
+        assertThat(detail.messages().get(0).getAttachmentStorageKey()).isNotBlank();
     }
 
     private UserAccount saveUser(String email, String displayName) {

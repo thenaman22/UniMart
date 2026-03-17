@@ -3,6 +3,7 @@ package com.unimart.service;
 import com.unimart.domain.Listing;
 import com.unimart.domain.ListingConversation;
 import com.unimart.domain.ListingMessage;
+import com.unimart.domain.MediaType;
 import com.unimart.domain.ListingStatus;
 import com.unimart.domain.UserAccount;
 import com.unimart.repository.ListingConversationRepository;
@@ -12,6 +13,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.nio.file.Files;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,21 +25,24 @@ public class MessagingService {
     private final ListingConversationRepository listingConversationRepository;
     private final ListingMessageRepository listingMessageRepository;
     private final MembershipService membershipService;
+    private final UploadService uploadService;
 
     public MessagingService(
         ListingRepository listingRepository,
         ListingConversationRepository listingConversationRepository,
         ListingMessageRepository listingMessageRepository,
-        MembershipService membershipService
+        MembershipService membershipService,
+        UploadService uploadService
     ) {
         this.listingRepository = listingRepository;
         this.listingConversationRepository = listingConversationRepository;
         this.listingMessageRepository = listingMessageRepository;
         this.membershipService = membershipService;
+        this.uploadService = uploadService;
     }
 
     @Transactional
-    public ConversationDetail startConversation(UserAccount sender, Long listingId, String body) {
+    public ConversationDetail startConversation(UserAccount sender, Long listingId, String body, MessageAttachment attachment) {
         Listing listing = requireAccessibleListing(listingId, sender);
         if (listing.getSeller().getId().equals(sender.getId())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "You cannot message your own listing");
@@ -47,15 +52,15 @@ public class MessagingService {
         ListingConversation conversation = listingConversationRepository.findByListingIdAndBuyerId(listingId, sender.getId())
             .orElseGet(() -> createConversation(listing, sender));
 
-        appendMessage(conversation, sender, body);
+        appendMessage(conversation, sender, body, attachment);
         return conversationDetail(sender, conversation.getId());
     }
 
     @Transactional
-    public ConversationDetail sendConversationMessage(UserAccount sender, Long conversationId, String body) {
+    public ConversationDetail sendConversationMessage(UserAccount sender, Long conversationId, String body, MessageAttachment attachment) {
         ListingConversation conversation = requireParticipant(conversationId, sender);
         ensureListingAcceptsMessages(conversation.getListing());
-        appendMessage(conversation, sender, body);
+        appendMessage(conversation, sender, body, attachment);
         return conversationDetail(sender, conversationId);
     }
 
@@ -184,11 +189,20 @@ public class MessagingService {
         }
     }
 
-    private void appendMessage(ListingConversation conversation, UserAccount sender, String body) {
+    private void appendMessage(ListingConversation conversation, UserAccount sender, String body, MessageAttachment attachment) {
+        String normalizedBody = normalizeBody(body);
+        validateMessagePayload(normalizedBody, attachment);
+
         ListingMessage message = new ListingMessage();
         message.setConversation(conversation);
         message.setSender(sender);
-        message.setBody(body.trim());
+        message.setBody(normalizedBody);
+        if (attachment != null) {
+            message.setAttachmentStorageKey(attachment.storageKey());
+            message.setAttachmentContentType(attachment.contentType());
+            message.setAttachmentFileSize(attachment.fileSize());
+            message.setAttachmentType(attachment.mediaType());
+        }
         listingMessageRepository.save(message);
 
         conversation.setLastMessageAt(Instant.now());
@@ -201,9 +215,50 @@ public class MessagingService {
 
     private String lastMessagePreview(Long conversationId) {
         return listingMessageRepository.findFirstByConversationIdOrderByCreatedAtDesc(conversationId)
-            .map(ListingMessage::getBody)
-            .map(body -> body.length() > 120 ? body.substring(0, 117) + "..." : body)
+            .map(this::messagePreview)
             .orElse("");
+    }
+
+    private String messagePreview(ListingMessage message) {
+        String body = normalizeBody(message.getBody());
+        if (!body.isBlank()) {
+            return body.length() > 120 ? body.substring(0, 117) + "..." : body;
+        }
+        if (message.getAttachmentType() == MediaType.IMAGE) {
+            return "Sent a photo";
+        }
+        return "";
+    }
+
+    private void validateMessagePayload(String body, MessageAttachment attachment) {
+        if (body.isBlank() && attachment == null) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Message cannot be empty");
+        }
+        if (body.length() > 2000) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Message is too long");
+        }
+        if (attachment == null) {
+            return;
+        }
+        if (attachment.mediaType() != MediaType.IMAGE) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Only images can be shared in chat right now");
+        }
+        if (attachment.storageKey() == null || attachment.storageKey().isBlank()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Missing uploaded image reference");
+        }
+        if (attachment.contentType() == null || !attachment.contentType().startsWith("image/")) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Unsupported image type");
+        }
+        if (attachment.fileSize() <= 0) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Uploaded image is invalid");
+        }
+        if (!Files.exists(uploadService.resolvePath(attachment.storageKey()))) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Uploaded image not found");
+        }
+    }
+
+    private String normalizeBody(String body) {
+        return body == null ? "" : body.trim();
     }
 
     public record SellerInboxListing(
@@ -234,4 +289,11 @@ public class MessagingService {
             return sellerUnreadCount + buyerUnreadCount;
         }
     }
+
+    public record MessageAttachment(
+        String storageKey,
+        String contentType,
+        long fileSize,
+        MediaType mediaType
+    ) {}
 }

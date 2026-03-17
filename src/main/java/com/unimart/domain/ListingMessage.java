@@ -2,6 +2,8 @@ package com.unimart.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -21,6 +23,19 @@ public class ListingMessage extends BaseEntity {
 
     @Column(nullable = false, length = 2000)
     private String body;
+
+    @Column(name = "attachment_storage_key", length = 255)
+    private String attachmentStorageKey;
+
+    @Column(name = "attachment_content_type", length = 120)
+    private String attachmentContentType;
+
+    @Column(name = "attachment_file_size")
+    private Long attachmentFileSize;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "attachment_type", length = 20)
+    private MediaType attachmentType;
 
     public ListingConversation getConversation() {
         return conversation;
@@ -44,5 +59,41 @@ public class ListingMessage extends BaseEntity {
 
     public void setBody(String body) {
         this.body = body;
+    }
+
+    public String getAttachmentStorageKey() {
+        return attachmentStorageKey;
+    }
+
+    public void setAttachmentStorageKey(String attachmentStorageKey) {
+        this.attachmentStorageKey = attachmentStorageKey;
+    }
+
+    public String getAttachmentContentType() {
+        return attachmentContentType;
+    }
+
+    public void setAttachmentContentType(String attachmentContentType) {
+        this.attachmentContentType = attachmentContentType;
+    }
+
+    public Long getAttachmentFileSize() {
+        return attachmentFileSize;
+    }
+
+    public void setAttachmentFileSize(Long attachmentFileSize) {
+        this.attachmentFileSize = attachmentFileSize;
+    }
+
+    public MediaType getAttachmentType() {
+        return attachmentType;
+    }
+
+    public void setAttachmentType(MediaType attachmentType) {
+        this.attachmentType = attachmentType;
+    }
+
+    public boolean hasAttachment() {
+        return attachmentStorageKey != null && !attachmentStorageKey.isBlank();
     }
 }

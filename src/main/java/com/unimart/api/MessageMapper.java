@@ -5,6 +5,7 @@ import com.unimart.domain.ListingConversation;
 import com.unimart.domain.ListingMedia;
 import com.unimart.domain.ListingMessage;
 import com.unimart.domain.UserAccount;
+import java.util.LinkedHashMap;
 import com.unimart.service.MessagingService;
 import java.util.Map;
 
@@ -74,13 +75,14 @@ public final class MessageMapper {
     }
 
     public static Map<String, Object> message(ListingMessage message, Long currentUserId) {
-        return Map.of(
-            "id", message.getId(),
-            "body", message.getBody(),
-            "createdAt", message.getCreatedAt(),
-            "mine", message.getSender().getId().equals(currentUserId),
-            "sender", participant(message.getSender())
-        );
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", message.getId());
+        payload.put("body", message.getBody());
+        payload.put("createdAt", message.getCreatedAt());
+        payload.put("mine", message.getSender().getId().equals(currentUserId));
+        payload.put("sender", participant(message.getSender()));
+        payload.put("attachment", message.hasAttachment() ? attachment(message) : null);
+        return payload;
     }
 
     private static Map<String, Object> listingSummary(Listing listing, ListingMedia previewMedia) {
@@ -103,6 +105,16 @@ public final class MessageMapper {
             "id", user.getId(),
             "displayName", user.getDisplayName(),
             "profileImageUrl", user.getProfileImageKey() == null ? "" : "/media/" + user.getProfileImageKey()
+        );
+    }
+
+    private static Map<String, Object> attachment(ListingMessage message) {
+        return Map.of(
+            "storageKey", message.getAttachmentStorageKey(),
+            "contentType", message.getAttachmentContentType(),
+            "fileSize", message.getAttachmentFileSize(),
+            "mediaType", message.getAttachmentType().name(),
+            "url", "/media/" + message.getAttachmentStorageKey()
         );
     }
 }
