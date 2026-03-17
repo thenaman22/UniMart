@@ -2,6 +2,7 @@ package com.unimart.service;
 
 import com.unimart.domain.Community;
 import com.unimart.domain.CommunityDomain;
+import com.unimart.domain.CommunityPostingPolicy;
 import com.unimart.domain.InviteLink;
 import com.unimart.domain.Listing;
 import com.unimart.domain.ListingMedia;
@@ -103,19 +104,6 @@ public class SeedDataService {
             return;
         }
 
-        Community campusMarket = createCommunity(
-            "campus-market",
-            "Campus Market",
-            "Private marketplace for students and staff.",
-            "school.edu"
-        );
-        Community makersExchange = createCommunity(
-            "makers-exchange",
-            "Makers Exchange",
-            "Buy, sell, and swap tools and project gear inside the maker community.",
-            "makers.org"
-        );
-
         List<UserAccount> campusUsers = new ArrayList<>();
         campusUsers.add(createUser("Campus Admin", "admin@school.edu"));
         campusUsers.add(createUser("Ava Patel", "ava@school.edu"));
@@ -129,6 +117,23 @@ public class SeedDataService {
         makersUsers.add(createUser("Liam Brooks", "liam@makers.org"));
         makersUsers.add(createUser("Grace Hall", "grace@makers.org"));
         makersUsers.add(createUser("Jack Turner", "jack@makers.org"));
+
+        Community campusMarket = createCommunity(
+            "campus-market",
+            "Campus Market",
+            "Private marketplace for students and staff.",
+            "school.edu",
+            campusUsers.get(0),
+            CommunityPostingPolicy.ALL_MEMBERS_CAN_POST
+        );
+        Community makersExchange = createCommunity(
+            "makers-exchange",
+            "Makers Exchange",
+            "Buy, sell, and swap tools and project gear inside the maker community.",
+            "makers.org",
+            makersUsers.get(0),
+            CommunityPostingPolicy.ALL_MEMBERS_CAN_POST
+        );
 
         addMembership(campusUsers.get(0), campusMarket, MembershipRole.ADMIN, MembershipStatus.ACTIVE);
         addMembership(campusUsers.get(1), campusMarket, MembershipRole.MEMBER, MembershipStatus.ACTIVE);
@@ -286,12 +291,21 @@ public class SeedDataService {
         clearStoredMedia();
     }
 
-    private Community createCommunity(String slug, String name, String description, String emailDomain) {
+    private Community createCommunity(
+        String slug,
+        String name,
+        String description,
+        String emailDomain,
+        UserAccount creator,
+        CommunityPostingPolicy postingPolicy
+    ) {
         Community community = new Community();
         community.setSlug(slug);
         community.setName(name);
         community.setDescription(description);
         community.setPrivateCommunity(true);
+        community.setCreator(creator);
+        community.setPostingPolicy(postingPolicy);
         communityRepository.save(community);
 
         CommunityDomain domain = new CommunityDomain();

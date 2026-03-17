@@ -1,15 +1,18 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../api'
 import { ListingPreview } from '../components/ListingPreview'
 
-export function CommunityPage({ user, communities }) {
+export function CommunityPage({ user, communities, onCommunitiesChanged }) {
   const { communityId } = useParams()
+  const navigate = useNavigate()
   const [listings, setListings] = useState([])
   const [communityDetail, setCommunityDetail] = useState(null)
   const [invite, setInvite] = useState(null)
   const [newDomain, setNewDomain] = useState('')
   const [error, setError] = useState('')
+  const [status, setStatus] = useState('')
+  const [deleting, setDeleting] = useState(false)
   const community = communities.find(item => String(item.communityId) === communityId)
 
   useEffect(() => {
@@ -28,6 +31,7 @@ export function CommunityPage({ user, communities }) {
 
   async function generateInvite() {
     try {
+      setError('')
       const response = await api(`/communities/${communityId}/invites`, {
         method: 'POST',
         body: JSON.stringify({ maxUses: 10 })
@@ -41,14 +45,32 @@ export function CommunityPage({ user, communities }) {
   async function addDomain(event) {
     event.preventDefault()
     try {
+      setError('')
       await api(`/communities/${communityId}/domains`, {
         method: 'POST',
         body: JSON.stringify({ emailDomain: newDomain })
       })
       setNewDomain('')
-      setError('Email domain added.')
+      setStatus('Email domain added.')
     } catch (err) {
       setError(err.message)
+    }
+  }
+
+  async function deleteCommunity() {
+    if (!window.confirm(`Delete ${communityDetail.name}? This permanently removes its listings, messages, members, and reports.`)) {
+      return
+    }
+    setDeleting(true)
+    setError('')
+    try {
+      await api(`/communities/${communityId}`, { method: 'DELETE' })
+      await onCommunitiesChanged?.()
+      navigate('/communities')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setDeleting(false)
     }
   }
 
@@ -66,7 +88,7 @@ export function CommunityPage({ user, communities }) {
             <p>{communityDetail.description}</p>
           </div>
         </div>
-        <p>Only approved members can view listings and create posts in this community.</p>
+        <p>Only approved members can view listings. Posting policy: {communityDetail.postingPolicyLabel}.</p>
         {!user && <p>Sign in first to request access or join with an invite.</p>}
         {error && <p className="error">{error}</p>}
       </section>
@@ -78,17 +100,27 @@ export function CommunityPage({ user, communities }) {
       <div className="panel-header">
         <div>
           <span className="badge neutral">{communityDetail.privateCommunity ? 'Closed marketplace' : 'Open marketplace'}</span>
-          <p className="eyebrow">{community.role}</p>
+          <p className="eyebrow">{community.roleLabel || community.role}</p>
           <h1>{community.name}</h1>
+          <p className="feed-meta">{communityDetail.postingPolicyLabel}</p>
         </div>
-        {(community.role === 'ADMIN' || community.role === 'MODERATOR') && (
-          <button onClick={generateInvite}>Generate invite link</button>
-        )}
+        <div className="button-row wrap-row">
+          {community.canPost && <Link className="button-link dark" to="/sell">Create listing</Link>}
+          {community.canManageCommunity && (
+            <button onClick={generateInvite}>Generate invite link</button>
+          )}
+          {community.canDelete && (
+            <button className="ghost" onClick={deleteCommunity} disabled={deleting}>
+              {deleting ? 'Deleting...' : 'Delete community'}
+            </button>
+          )}
+        </div>
       </div>
 
       {invite && <p className="code-block">Invite token: {invite.token}</p>}
+      {status && <p className="success">{status}</p>}
       {error && <p className="error">{error}</p>}
-      {(community.role === 'ADMIN' || community.role === 'MODERATOR') && (
+      {community.canManageCommunity && (
         <form className="searchbar invite-form" onSubmit={addDomain}>
           <input value={newDomain} onChange={event => setNewDomain(event.target.value)} placeholder="Add allowed email domain" />
           <button type="submit">Add domain</button>

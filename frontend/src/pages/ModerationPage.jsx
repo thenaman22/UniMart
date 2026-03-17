@@ -1,8 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api'
 
-export function ModerationPage({ user, communities }) {
-  const modCommunity = communities.find(item => item.role !== 'MEMBER')
+const ROLE_OPTIONS = [
+  { value: 'MEMBER', label: 'Viewer' },
+  { value: 'MODERATOR', label: 'Moderator' }
+]
+
+const SELLER_ROLE_OPTIONS = [
+  { value: 'MEMBER', label: 'Viewer' },
+  { value: 'SELLER', label: 'Seller' },
+  { value: 'MODERATOR', label: 'Moderator' }
+]
+
+export function ModerationPage({ user, communities, onCommunitiesChanged }) {
+  const manageableCommunities = useMemo(
+    () => communities.filter(item => item.canModerate),
+    [communities]
+  )
+  const [selectedCommunityId, setSelectedCommunityId] = useState('')
   const [requests, setRequests] = useState([])
   const [members, setMembers] = useState([])
   const [reports, setReports] = useState([])
@@ -10,51 +25,54 @@ export function ModerationPage({ user, communities }) {
   const [busyMembershipId, setBusyMembershipId] = useState(null)
   const [memberSearch, setMemberSearch] = useState('')
 
+  const modCommunity = manageableCommunities.find(item => String(item.communityId) === String(selectedCommunityId)) || manageableCommunities[0]
+
+  useEffect(() => {
+    if (!selectedCommunityId && manageableCommunities.length > 0) {
+      setSelectedCommunityId(String(manageableCommunities[0].communityId))
+    }
+  }, [selectedCommunityId, manageableCommunities])
+
+  async function loadModerationData(communityId) {
+    const [pendingRequests, activeMembers, openReports] = await Promise.all([
+      api(`/moderation/${communityId}/requests`),
+      api(`/moderation/${communityId}/members`),
+      api(`/moderation/${communityId}/reports`)
+    ])
+    setRequests(pendingRequests)
+    setMembers(activeMembers)
+    setReports(openReports)
+  }
+
   useEffect(() => {
     if (!user || !modCommunity) return
-    Promise.all([
-      api(`/moderation/${modCommunity.communityId}/requests`),
-      api(`/moderation/${modCommunity.communityId}/members`),
-      api(`/moderation/${modCommunity.communityId}/reports`)
-    ])
-      .then(([pendingRequests, activeMembers, openReports]) => {
-        setRequests(pendingRequests)
-        setMembers(activeMembers)
-        setReports(openReports)
-      })
-      .catch(err => setError(err.message))
+    loadModerationData(modCommunity.communityId).catch(err => setError(err.message))
   }, [user, modCommunity])
 
   async function updateMembership(membershipId, approve) {
     setBusyMembershipId(membershipId)
     try {
+      setError('')
       await api(`/moderation/memberships/${membershipId}?approve=${approve}`, { method: 'PATCH' })
-      if (approve) {
-        const approved = requests.find(item => item.membershipId === membershipId)
-        setRequests(current => current.filter(item => item.membershipId !== membershipId))
-        if (approved) {
-          setMembers(current => {
-            const nextMembers = [
-              ...current,
-              {
-                membershipId: approved.membershipId,
-                communityId: approved.communityId,
-                communityName: approved.communityName,
-                userId: approved.userId,
-                memberName: approved.requesterName,
-                memberEmail: approved.requesterEmail,
-                status: 'ACTIVE',
-                role: approved.role
-              }
-            ]
-            return nextMembers.sort((first, second) => first.memberName.localeCompare(second.memberName))
-          })
-        }
-      } else if (requests.some(item => item.membershipId === membershipId)) {
-        setRequests(current => current.filter(item => item.membershipId !== membershipId))
-      } else {
-        setMembers(current => current.filter(item => item.membershipId !== membershipId))
-      }
+      await loadModerationData(modCommunity.communityId)
+      await onCommunitiesChanged?.()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusyMembershipId(null)
+    }
+  }
+
+  async function updateRole(membershipId, role) {
+    setBusyMembershipId(membershipId)
+    try {
+      setError('')
+      await api(`/communities/${modCommunity.communityId}/memberships/${membershipId}/role`, {
+        method: 'PATCH',
+        body: JSON.stringify({ role })
+      })
+      await loadModerationData(modCommunity.communityId)
+      await onCommunitiesChanged?.()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -75,6 +93,16 @@ export function ModerationPage({ user, communities }) {
     ))
   }, [memberSearch, members])
 
+  const roleOptions = useMemo(() => (
+    modCommunity?.postingPolicy === 'APPROVED_SELLERS_ONLY'
+      ? SELLER_ROLE_OPTIONS
+      : ROLE_OPTIONS
+  ), [modCommunity])
+
+  const currentRoleLabel = modCommunity
+    ? `${modCommunity.roleLabel || modCommunity.role}${modCommunity.isCreator ? ' (creator)' : ''}`
+    : ''
+
   if (!user) {
     return <section className="panel"><p>Please sign in first.</p></section>
   }
@@ -85,7 +113,23 @@ export function ModerationPage({ user, communities }) {
 
   return (
     <div className="moderation-shell">
-      <div className="moderation-title-pill">{modCommunity.name}</div>
+      <div className="moderation-toolbar">
+        <div className="moderation-toolbar-copy">
+          <div className="moderation-title-pill">{modCommunity.name}</div>
+          <p className="feed-meta moderation-role-summary">Your role: <strong>{currentRoleLabel}</strong></p>
+        </div>
+        <select
+          className="moderation-community-select"
+          value={modCommunity.communityId}
+          onChange={event => setSelectedCommunityId(event.target.value)}
+        >
+          {manageableCommunities.map(community => (
+            <option key={community.communityId} value={community.communityId}>
+              {community.name}
+            </option>
+          ))}
+        </select>
+      </div>
       {error && <p className="error">{error}</p>}
 
       <div className="moderation-layout">
@@ -158,10 +202,29 @@ export function ModerationPage({ user, communities }) {
                 <article key={member.membershipId} className="queue-card">
                   <strong>{member.memberName}</strong>
                   <p>{member.memberEmail}</p>
-                  <p>{member.role}</p>
+                  <p>{member.roleLabel || member.role}</p>
+                  {modCommunity.canManageRoles && !member.isCreator && member.userId !== user.id && (
+                    <div className="member-role-controls">
+                      {roleOptions.map(option => {
+                        const isCurrentRole = option.value === member.role
+                        return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={`role-option-button${isCurrentRole ? ' active' : ' ghost'}`}
+                          aria-pressed={isCurrentRole}
+                          disabled={busyMembershipId === member.membershipId || isCurrentRole}
+                          onClick={() => updateRole(member.membershipId, option.value)}
+                        >
+                          {isCurrentRole ? `Current: ${option.label}` : option.label}
+                        </button>
+                        )
+                      })}
+                    </div>
+                  )}
                   {member.userId === user.id ? (
-                    <p className="feed-meta">You manage this community.</p>
-                  ) : (
+                    <p className="feed-meta">Your role here: <strong>{member.roleLabel || member.role}{member.isCreator ? ' (creator)' : ''}</strong></p>
+                  ) : (!member.isCreator && (modCommunity.canManageRoles || (member.role !== 'MODERATOR' && member.role !== 'ADMIN'))) ? (
                     <div className="button-row">
                       <button
                         className="ghost"
@@ -171,7 +234,7 @@ export function ModerationPage({ user, communities }) {
                         {busyMembershipId === member.membershipId ? 'Removing...' : 'Remove member'}
                       </button>
                     </div>
-                  )}
+                  ) : null}
                 </article>
               ))}
               {visibleMembers.length === 0 && (

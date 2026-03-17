@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { api } from '../api'
 
 export function CreateListingPage({ user, communities }) {
+  const postableCommunities = communities.filter(community => community.canPost)
   const [form, setForm] = useState({
     communityId: '',
     title: '',
@@ -16,6 +17,16 @@ export function CreateListingPage({ user, communities }) {
 
   if (!user) {
     return <section className="panel"><p>Please sign in to create a listing.</p></section>
+  }
+
+  if (postableCommunities.length === 0) {
+    return (
+      <section className="panel">
+        <h1>Create a listing</h1>
+        <p>You do not currently have posting access in any community.</p>
+        <p className="feed-meta">Join a community that allows member posting, ask an admin to assign you as a seller, or create your own community.</p>
+      </section>
+    )
   }
 
   async function uploadFiles() {
@@ -89,7 +100,7 @@ export function CreateListingPage({ user, communities }) {
       <form className="stack" onSubmit={submit}>
         <select value={form.communityId} onChange={event => setForm({ ...form, communityId: event.target.value })} required>
           <option value="">Choose a community</option>
-          {communities.map(community => (
+          {postableCommunities.map(community => (
             <option key={community.communityId} value={community.communityId}>{community.name}</option>
           ))}
         </select>

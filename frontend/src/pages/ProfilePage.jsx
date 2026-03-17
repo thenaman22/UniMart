@@ -103,7 +103,7 @@ export function ProfilePage({ user, communities, onCommunitiesChanged }) {
     if (!query) return true
     return (
       community.name.toLowerCase().includes(query) ||
-      community.role.toLowerCase().includes(query)
+      (community.roleLabel || community.role).toLowerCase().includes(query)
     )
   })
 
@@ -305,20 +305,24 @@ export function ProfilePage({ user, communities, onCommunitiesChanged }) {
                 <article key={community.communityId} className="profile-community-row">
                   <div className="profile-community-copy">
                     <strong>{community.name}</strong>
-                    <span>{community.role}</span>
+                    <span>{community.roleLabel || community.role}</span>
                   </div>
                   <div className="profile-community-actions">
                     <Link className="profile-tile-action" to={`/communities/${community.communityId}`} onClick={() => setCommunityModalOpen(false)}>
                       View
                     </Link>
-                    <button
-                      type="button"
-                      className="profile-tile-action profile-community-leave"
-                      disabled={leavingCommunityId === community.communityId}
-                      onClick={() => leaveCommunity(community)}
-                    >
-                      {leavingCommunityId === community.communityId ? 'Leaving...' : 'Leave'}
-                    </button>
+                    {!community.canDelete ? (
+                      <button
+                        type="button"
+                        className="profile-tile-action profile-community-leave"
+                        disabled={leavingCommunityId === community.communityId}
+                        onClick={() => leaveCommunity(community)}
+                      >
+                        {leavingCommunityId === community.communityId ? 'Leaving...' : 'Leave'}
+                      </button>
+                    ) : (
+                      <span className="feed-meta">Delete this community from its admin page.</span>
+                    )}
                   </div>
                 </article>
               ))}
