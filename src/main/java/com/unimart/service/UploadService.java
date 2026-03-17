@@ -91,6 +91,21 @@ public class UploadService {
         return storageKey == null || storageKey.isBlank() ? "" : "/media/" + storageKey;
     }
 
+    public void deleteStoredFile(String storageKey) {
+        if (storageKey == null || storageKey.isBlank()) {
+            return;
+        }
+        try {
+            Path resolved = storageRoot.resolve(storageKey).normalize();
+            if (!resolved.startsWith(storageRoot)) {
+                return;
+            }
+            Files.deleteIfExists(resolved);
+        } catch (IOException ignored) {
+            // Best-effort cleanup for deleted communities/listings.
+        }
+    }
+
     private MediaType validate(String contentType, long fileSize) {
         if (contentType == null || contentType.isBlank()) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Missing media content type");

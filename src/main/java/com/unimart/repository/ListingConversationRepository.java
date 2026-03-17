@@ -10,4 +10,5 @@ public interface ListingConversationRepository extends JpaRepository<ListingConv
     List<ListingConversation> findBySellerIdAndListingCommunityIdInOrderByLastMessageAtDesc(Long sellerId, List<Long> communityIds);
     List<ListingConversation> findByListingIdOrderByLastMessageAtDesc(Long listingId);
     List<ListingConversation> findByBuyerIdAndListingCommunityIdInOrderByLastMessageAtDesc(Long buyerId, List<Long> communityIds);
+    List<ListingConversation> findByListingCommunityId(Long communityId);
 }

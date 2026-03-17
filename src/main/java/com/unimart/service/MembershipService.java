@@ -2,6 +2,7 @@ package com.unimart.service;
 
 import com.unimart.domain.Community;
 import com.unimart.domain.CommunityDomain;
+import com.unimart.domain.CommunityPostingPolicy;
 import com.unimart.domain.InviteLink;
 import com.unimart.domain.Membership;
 import com.unimart.domain.MembershipRole;
@@ -15,6 +16,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -52,8 +54,24 @@ public class MembershipService {
 
     public Membership requireModerator(Long userId, Long communityId) {
         Membership membership = requireActiveMembership(userId, communityId);
-        if (membership.getRole() == MembershipRole.MEMBER) {
+        if (!canModerate(membership.getRole())) {
             throw new ApiException(HttpStatus.FORBIDDEN, "Moderator access required");
+        }
+        return membership;
+    }
+
+    public Membership requireAdmin(Long userId, Long communityId) {
+        Membership membership = requireActiveMembership(userId, communityId);
+        if (membership.getRole() != MembershipRole.ADMIN) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Admin access required");
+        }
+        return membership;
+    }
+
+    public Membership requireCanPost(Long userId, Long communityId) {
+        Membership membership = requireActiveMembership(userId, communityId);
+        if (!canPost(membership)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "You cannot post listings in this community");
         }
         return membership;
     }
@@ -115,6 +133,9 @@ public class MembershipService {
         if (membership.getStatus() != MembershipStatus.ACTIVE) {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Only active memberships can be left");
         }
+        if (isCommunityCreator(membership) || membership.getRole() == MembershipRole.ADMIN) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Admins must delete the community instead of leaving it");
+        }
         membership.setStatus(MembershipStatus.REVOKED);
         return membership;
     }
@@ -146,14 +167,23 @@ public class MembershipService {
     public Membership revokeMembership(Long moderatorUserId, Long membershipId) {
         Membership membership = membershipRepository.findById(membershipId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Membership not found"));
-        requireModerator(moderatorUserId, membership.getCommunity().getId());
+        Membership actor = requireModerator(moderatorUserId, membership.getCommunity().getId());
+        if (membership.getUser().getId().equals(actor.getUser().getId())) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Use the leave community flow to remove yourself");
+        }
+        if (isCommunityCreator(membership)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "The community creator cannot be removed");
+        }
+        if (actor.getRole() == MembershipRole.MODERATOR && canModerate(membership.getRole())) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "Moderators cannot remove staff members");
+        }
         membership.setStatus(MembershipStatus.REVOKED);
         return membership;
     }
 
     @Transactional
     public InviteLink createInvite(Long moderatorUserId, Long communityId, int maxUses) {
-        requireModerator(moderatorUserId, communityId);
+        requireAdmin(moderatorUserId, communityId);
         Community community = communityRepository.findById(communityId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Community not found"));
         InviteLink inviteLink = new InviteLink();
@@ -167,13 +197,61 @@ public class MembershipService {
 
     @Transactional
     public CommunityDomain addDomain(Long moderatorUserId, Long communityId, String emailDomain) {
-        requireModerator(moderatorUserId, communityId);
+        requireAdmin(moderatorUserId, communityId);
         Community community = communityRepository.findById(communityId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Community not found"));
         CommunityDomain domain = new CommunityDomain();
         domain.setCommunity(community);
         domain.setEmailDomain(emailDomain);
         return communityDomainRepository.save(domain);
+    }
+
+    @Transactional
+    public Membership updateRole(Long adminUserId, Long communityId, Long membershipId, MembershipRole role) {
+        requireAdmin(adminUserId, communityId);
+        Membership membership = membershipRepository.findById(membershipId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Membership not found"));
+        if (!Objects.equals(membership.getCommunity().getId(), communityId)) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Membership does not belong to this community");
+        }
+        if (membership.getStatus() != MembershipStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Only active members can have their role updated");
+        }
+        if (role == MembershipRole.ADMIN) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Admin role cannot be reassigned");
+        }
+        if (isCommunityCreator(membership)) {
+            throw new ApiException(HttpStatus.FORBIDDEN, "The community creator role cannot be changed");
+        }
+        if (role == MembershipRole.SELLER
+            && membership.getCommunity().getPostingPolicy() != CommunityPostingPolicy.APPROVED_SELLERS_ONLY) {
+            throw new ApiException(
+                HttpStatus.BAD_REQUEST,
+                "Seller role is only available in communities that require approved sellers"
+            );
+        }
+        membership.setRole(role);
+        return membership;
+    }
+
+    public boolean canPost(Membership membership) {
+        CommunityPostingPolicy postingPolicy = membership.getCommunity().getPostingPolicy();
+        return switch (postingPolicy) {
+            case ALL_MEMBERS_CAN_POST -> true;
+            case APPROVED_SELLERS_ONLY -> membership.getRole() == MembershipRole.ADMIN
+                || membership.getRole() == MembershipRole.MODERATOR
+                || membership.getRole() == MembershipRole.SELLER;
+            case CREATOR_ONLY -> isCommunityCreator(membership);
+        };
+    }
+
+    public boolean canModerate(MembershipRole role) {
+        return role == MembershipRole.ADMIN || role == MembershipRole.MODERATOR;
+    }
+
+    public boolean isCommunityCreator(Membership membership) {
+        Community community = membership.getCommunity();
+        return community.getCreator() != null && community.getCreator().getId().equals(membership.getUser().getId());
     }
 
     private Membership upsertMembership(UserAccount user, Community community, MembershipStatus status) {

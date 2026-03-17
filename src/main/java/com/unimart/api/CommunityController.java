@@ -1,19 +1,24 @@
 package com.unimart.api;
 
 import com.unimart.api.dto.CommunityDtos.AddDomainRequest;
+import com.unimart.api.dto.CommunityDtos.CreateCommunityRequest;
 import com.unimart.api.dto.CommunityDtos.CreateInviteRequest;
 import com.unimart.api.dto.CommunityDtos.JoinByInviteRequest;
+import com.unimart.api.dto.CommunityDtos.UpdateMembershipRoleRequest;
 import com.unimart.domain.Community;
 import com.unimart.domain.Membership;
 import com.unimart.repository.CommunityRepository;
 import com.unimart.service.ApiException;
+import com.unimart.service.CommunityService;
 import com.unimart.service.MembershipService;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -25,11 +30,28 @@ import org.springframework.web.bind.annotation.RestController;
 public class CommunityController {
 
     private final MembershipService membershipService;
+    private final CommunityService communityService;
     private final CommunityRepository communityRepository;
 
-    public CommunityController(MembershipService membershipService, CommunityRepository communityRepository) {
+    public CommunityController(
+        MembershipService membershipService,
+        CommunityService communityService,
+        CommunityRepository communityRepository
+    ) {
         this.membershipService = membershipService;
+        this.communityService = communityService;
         this.communityRepository = communityRepository;
+    }
+
+    @PostMapping
+    public Map<String, Object> createCommunity(
+        @Valid @RequestBody CreateCommunityRequest request,
+        @CurrentUser AuthContext authContext
+    ) {
+        requireAuth(authContext);
+        return Mapper.community(
+            communityService.createCommunity(authContext.user(), request.name(), request.description(), request.postingPolicy())
+        );
     }
 
     @GetMapping
@@ -41,8 +63,15 @@ public class CommunityController {
     }
 
     @GetMapping("/discover")
-    public List<Map<String, Object>> discoverCommunities() {
-        return communityRepository.findAll().stream().map(this::toCommunityCard).toList();
+    public List<Map<String, Object>> discoverCommunities(@CurrentUser AuthContext authContext) {
+        Map<Long, Membership> membershipsByCommunityId = authContext == null
+            ? Map.of()
+            : membershipService.activeMemberships(authContext.user()).stream()
+                .collect(java.util.stream.Collectors.toMap(membership -> membership.getCommunity().getId(), Function.identity()));
+
+        return communityRepository.findAll().stream()
+            .map(community -> Mapper.community(community, membershipsByCommunityId.get(community.getId())))
+            .toList();
     }
 
     @GetMapping("/{communityId}")
@@ -50,7 +79,7 @@ public class CommunityController {
         Community community = communityRepository.findById(communityId)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Community not found"));
 
-        Map<String, Object> payload = toCommunityCard(community);
+        Map<String, Object> payload = Mapper.community(community, null);
         if (authContext == null) {
             return payload;
         }
@@ -58,18 +87,7 @@ public class CommunityController {
         return membershipService.activeMemberships(authContext.user()).stream()
             .filter(membership -> membership.getCommunity().getId().equals(communityId))
             .findFirst()
-            .<Map<String, Object>>map(membership -> Map.of(
-                "id", community.getId(),
-                "slug", community.getSlug(),
-                "name", community.getName(),
-                "description", community.getDescription(),
-                "privateCommunity", community.isPrivateCommunity(),
-                "membership", Map.of(
-                    "membershipId", membership.getId(),
-                    "role", membership.getRole().name(),
-                    "status", membership.getStatus().name()
-                )
-            ))
+            .map(Mapper::community)
             .orElse(payload);
     }
 
@@ -92,6 +110,12 @@ public class CommunityController {
         requireAuth(authContext);
         Membership membership = membershipService.leaveCommunity(authContext.user(), communityId);
         return Mapper.community(membership);
+    }
+
+    @DeleteMapping("/{communityId}")
+    public void deleteCommunity(@PathVariable Long communityId, @CurrentUser AuthContext authContext) {
+        requireAuth(authContext);
+        communityService.deleteCommunity(authContext.user().getId(), communityId);
     }
 
     @PostMapping("/join-by-invite")
@@ -124,13 +148,16 @@ public class CommunityController {
         );
     }
 
-    private Map<String, Object> toCommunityCard(Community community) {
-        return Map.of(
-            "id", community.getId(),
-            "slug", community.getSlug(),
-            "name", community.getName(),
-            "description", community.getDescription(),
-            "privateCommunity", community.isPrivateCommunity()
+    @PatchMapping("/{communityId}/memberships/{membershipId}/role")
+    public Map<String, Object> updateMembershipRole(
+        @PathVariable Long communityId,
+        @PathVariable Long membershipId,
+        @Valid @RequestBody UpdateMembershipRoleRequest request,
+        @CurrentUser AuthContext authContext
+    ) {
+        requireAuth(authContext);
+        return Mapper.community(
+            membershipService.updateRole(authContext.user().getId(), communityId, membershipId, request.role())
         );
     }
 

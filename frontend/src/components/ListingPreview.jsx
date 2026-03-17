@@ -27,7 +27,7 @@ export function ListingPreview({ listing, mode = 'feed' }) {
   const orientation = orientations[safeIndex] || 'landscape'
   const src = `http://localhost:8080${activeMedia.url}`
   const frameClassName = `listing-media-frame ${mode} ${orientation}`
-  const mediaClassName = `listing-media${isTileMode ? ' listing-media-tile' : ''}`
+  const mediaClassName = `listing-media${mode === 'feed' ? ' listing-media-feed' : ''}${isTileMode ? ' listing-media-tile' : ''}`
 
   function updateOrientation(index, width, height) {
     setOrientations(current => ({

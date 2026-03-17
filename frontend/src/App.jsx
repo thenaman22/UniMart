@@ -191,7 +191,7 @@ export default function App() {
   }, [theme])
 
   useEffect(() => {
-    if (location.pathname !== '/') {
+    if (location.pathname !== '/' && location.pathname !== '/communities') {
       setSearchText('')
       return
     }
@@ -235,6 +235,10 @@ export default function App() {
     const params = new URLSearchParams()
     if (searchText.trim()) {
       params.set('q', searchText.trim())
+    }
+    if (location.pathname === '/communities') {
+      navigate(params.toString() ? `/communities?${params}` : '/communities')
+      return
     }
     navigate(params.toString() ? `/?${params}` : '/')
   }
@@ -280,7 +284,10 @@ export default function App() {
   const currentPage = pageCopy(location.pathname)
   const isMessagesRoute = location.pathname === '/messages'
   const isModerationRoute = location.pathname === '/moderation'
-  const hideTopSearch = location.pathname === '/profile' || location.pathname.startsWith('/users/')
+  const isCommunitiesRoute = location.pathname === '/communities'
+  const hideTopSearch = location.pathname === '/profile'
+    || location.pathname === '/sell'
+    || location.pathname.startsWith('/users/')
   const hideTopbar = isMessagesRoute || isModerationRoute
   const primaryNav = [
     { to: '/', label: 'Home', icon: HomeIcon, end: true },
@@ -368,7 +375,7 @@ export default function App() {
                   <input
                     value={searchText}
                     onChange={event => setSearchText(event.target.value)}
-                    placeholder="Search listings, books, furniture, tech..."
+                    placeholder={isCommunitiesRoute ? 'Search communities, schools, clubs...' : 'Search listings, books, furniture, tech...'}
                   />
                   <button type="submit">Search</button>
                 </form>
@@ -394,15 +401,15 @@ export default function App() {
           <Routes>
             <Route path="/auth" element={<AuthPage onLogin={onLogin} />} />
             <Route path="/" element={<DashboardPage user={user} communities={communities} />} />
-            <Route path="/communities" element={<CommunitiesPage user={user} communities={communities} />} />
-            <Route path="/communities/:communityId" element={<CommunityPage user={user} communities={communities} />} />
+            <Route path="/communities" element={<CommunitiesPage user={user} communities={communities} onCommunitiesChanged={refreshCommunities} />} />
+            <Route path="/communities/:communityId" element={<CommunityPage user={user} communities={communities} onCommunitiesChanged={refreshCommunities} />} />
             <Route path="/profile" element={<ProfilePage user={user} communities={communities} onCommunitiesChanged={refreshCommunities} />} />
             <Route path="/profile/edit" element={<ProfileEditPage user={user} onProfileUpdated={onProfileUpdated} />} />
             <Route path="/users/:userId" element={<UserProfilePage user={user} />} />
             <Route path="/sell" element={<CreateListingPage user={user} communities={communities} />} />
             <Route path="/messages" element={<MessagesPage user={user} />} />
             <Route path="/listings/:listingId/edit" element={<EditListingPage user={user} communities={communities} />} />
-            <Route path="/moderation" element={<ModerationPage user={user} communities={communities} />} />
+            <Route path="/moderation" element={<ModerationPage user={user} communities={communities} onCommunitiesChanged={refreshCommunities} />} />
           </Routes>
         </main>
       </div>

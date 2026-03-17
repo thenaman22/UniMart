@@ -75,7 +75,7 @@ export function DashboardPage({ user, communities }) {
   }
 
   return (
-    <div className="social-layout">
+    <div className="social-layout dashboard-layout">
       <section className="feed-column">
         <div className="feed-intro panel">
           <div>
@@ -151,7 +151,7 @@ export function DashboardPage({ user, communities }) {
           {communities.map(community => (
             <Link key={community.communityId} className="community-link" to={`/communities/${community.communityId}`}>
               <strong>{community.name}</strong>
-              <span>{community.role}</span>
+              <span>{community.roleLabel || community.role}</span>
             </Link>
           ))}
         </div>

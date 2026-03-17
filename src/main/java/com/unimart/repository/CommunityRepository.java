@@ -6,4 +6,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CommunityRepository extends JpaRepository<Community, Long> {
     Optional<Community> findBySlug(String slug);
+    long countByCreatorId(Long creatorId);
 }

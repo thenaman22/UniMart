@@ -42,7 +42,7 @@ public class ListingService {
         String itemCondition,
         List<ListingMedia> media
     ) {
-        Membership membership = membershipService.requireActiveMembership(user.getId(), communityId);
+        Membership membership = membershipService.requireCanPost(user.getId(), communityId);
         Listing listing = new Listing();
         listing.setCommunity(membership.getCommunity());
         listing.setSeller(user);
