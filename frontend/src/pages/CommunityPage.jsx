@@ -95,21 +95,27 @@ export function CommunityPage({ user, communities }) {
         </form>
       )}
 
-      <div className="listing-grid">
+      <div className="listing-grid community-market-grid">
         {listings.map(listing => (
-          <article key={listing.id} className="listing-card">
+          <article key={listing.id} className="listing-card community-listing-card">
             <ListingPreview listing={listing} mode="grid" />
-            <p className="price">${listing.price}</p>
-            <h3>{listing.title}</h3>
-            <p>{listing.description}</p>
-            <small><Link className="text-link" to={`/users/${listing.sellerId}`}>{listing.sellerName}</Link></small>
-            {user && listing.sellerId !== user.id && (
-              <div className="button-row wrap-row">
-                <Link className="button-link dark" to={`/messages?view=buyer&compose=${listing.id}`}>
-                  Message seller
-                </Link>
+            <div className="community-listing-card-body">
+              <p className="price">${listing.price}</p>
+              <h3>{listing.title}</h3>
+              <p className="community-listing-description">{listing.description}</p>
+              <div className="community-listing-footer">
+                <small className="community-listing-seller">
+                  <Link className="text-link" to={`/users/${listing.sellerId}`}>{listing.sellerName}</Link>
+                </small>
+                {user && listing.sellerId !== user.id && (
+                  <div className="button-row wrap-row community-listing-actions">
+                    <Link className="button-link dark" to={`/messages?view=buyer&compose=${listing.id}`}>
+                      Message seller
+                    </Link>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </article>
         ))}
       </div>

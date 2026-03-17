@@ -3,6 +3,10 @@ import { Link, useParams } from 'react-router-dom'
 import { ListingPreview } from '../components/ListingPreview'
 import { api } from '../api'
 
+function hasListingMedia(listing) {
+  return Boolean(listing.media?.length || listing.previewMediaUrl)
+}
+
 export function UserProfilePage({ user }) {
   const { userId } = useParams()
   const [profile, setProfile] = useState(null)
@@ -37,53 +41,78 @@ export function UserProfilePage({ user }) {
   }
 
   return (
-    <div className="stack profile-page-stack">
-      <section className="panel seller-hero own-profile-hero">
-        <div className="seller-profile-header">
-          <div className="profile-avatar profile-avatar-large">
+    <div className="stack profile-page-stack profile-page-shell">
+      <section className="panel profile-hero-card profile-hero-card-public">
+        <div className="profile-hero-main">
+          <div className="profile-avatar profile-avatar-large profile-hero-avatar">
             {profile.profileImageUrl ? (
               <img src={`http://localhost:8080${profile.profileImageUrl}`} alt={profile.displayName} />
             ) : (
               <span>{profile.displayName?.[0] || '?'}</span>
             )}
           </div>
-          <div className="seller-profile-copy seller-profile-copy-wide">
-            <div className="seller-name-row">
-              <h1>{profile.displayName}</h1>
+
+          <div className="profile-hero-copy">
+            <div className="profile-hero-heading">
+              <div className="profile-hero-title-block">
+                <p className="eyebrow">Seller profile</p>
+                <h1>{profile.displayName}</h1>
+              </div>
             </div>
-            <div className="seller-bio-block">
-              <strong>{profile.email}</strong>
-              {profile.location && <span>{profile.location}</span>}
-              {profile.phoneNumber && <span>{profile.phoneNumber}</span>}
-              <p>{profile.bio || 'This seller has not added a bio yet.'}</p>
+
+            <div className="profile-stat-strip profile-stat-strip-public">
+              <div className="profile-stat-pill">
+                <strong>{listings.length}</strong>
+                <span>Current listings</span>
+              </div>
+            </div>
+
+            <div className="profile-info-stack">
+              <p className="profile-bio-copy">{profile.bio || 'This seller has not added a bio yet.'}</p>
+              <div className="profile-contact-row">
+                {profile.location && <span>{profile.location}</span>}
+                {profile.phoneNumber && <span>{profile.phoneNumber}</span>}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="panel">
-        <div className="feed-header">
+      <section className="panel profile-marketplace-panel">
+        <div className="profile-section-bar">
           <div>
             <p className="eyebrow">Available now</p>
-            <h2>{profile.displayName}'s active listings</h2>
+            <h2>{profile.displayName}'s current listings</h2>
+            <p className="profile-section-copy">These listings are visible because you share at least one community with this seller.</p>
           </div>
         </div>
-        <div className="listing-grid">
+
+        <div className="profile-gallery-grid">
           {listings.map(listing => (
-            <article key={listing.id} className="listing-card profile-listing-card">
-              <ListingPreview listing={listing} mode="grid" />
-              <div className="profile-listing-body">
-                <div className="listing-heading-row">
-                  <div>
-                    <h3>{listing.title}</h3>
-                    <p className="feed-meta">{listing.category} • {listing.itemCondition}</p>
-                  </div>
+            <article key={listing.id} className="profile-tile-card profile-tile-card-public">
+              {hasListingMedia(listing) ? (
+                <ListingPreview listing={listing} mode="tile" />
+              ) : (
+                <div className="profile-tile-placeholder">
+                  <span>{listing.title?.[0] || '?'}</span>
+                </div>
+              )}
+
+              <div className="profile-tile-body">
+                <div className="profile-tile-price-row">
                   <p className="price">${listing.price}</p>
                 </div>
-                <p>{listing.description}</p>
+
+                <div className="profile-tile-copy profile-tile-copy-static">
+                  <strong>{listing.title}</strong>
+                  <p>{listing.description}</p>
+                </div>
+
+                <p className="feed-meta">{listing.category} • {listing.itemCondition}</p>
+
                 {user && listing.sellerId !== user.id && (
-                  <div className="button-row wrap-row">
-                    <Link className="button-link dark" to={`/messages?view=buyer&compose=${listing.id}`}>
+                  <div className="profile-tile-actions">
+                    <Link className="profile-tile-action profile-tile-action-primary" to={`/messages?view=buyer&compose=${listing.id}`}>
                       Message seller
                     </Link>
                   </div>
@@ -91,7 +120,11 @@ export function UserProfilePage({ user }) {
               </div>
             </article>
           ))}
-          {listings.length === 0 && <p>This seller has no active listings right now.</p>}
+          {listings.length === 0 && (
+            <div className="profile-empty-state">
+              <p>This seller has no current listings in your shared communities right now.</p>
+            </div>
+          )}
         </div>
       </section>
     </div>

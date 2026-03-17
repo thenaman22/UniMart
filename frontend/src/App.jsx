@@ -126,15 +126,26 @@ export default function App() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  async function refreshCommunities() {
+    if (!user) {
+      setCommunities([])
+      return
+    }
+
+    try {
+      const nextCommunities = await api('/communities')
+      setCommunities(nextCommunities)
+    } catch {
+      localStorage.removeItem('unimart-token')
+      localStorage.removeItem('unimart-user')
+      setUser(null)
+      setCommunities([])
+    }
+  }
+
   useEffect(() => {
     if (!user) return
-    api('/communities')
-      .then(setCommunities)
-      .catch(() => {
-        localStorage.removeItem('unimart-token')
-        localStorage.removeItem('unimart-user')
-        setUser(null)
-      })
+    refreshCommunities()
   }, [user])
 
   useEffect(() => {
@@ -268,6 +279,9 @@ export default function App() {
   const isAuthed = Boolean(user)
   const currentPage = pageCopy(location.pathname)
   const isMessagesRoute = location.pathname === '/messages'
+  const isModerationRoute = location.pathname === '/moderation'
+  const hideTopSearch = location.pathname === '/profile' || location.pathname.startsWith('/users/')
+  const hideTopbar = isMessagesRoute || isModerationRoute
   const primaryNav = [
     { to: '/', label: 'Home', icon: HomeIcon, end: true },
     { to: '/communities', label: 'Communities', icon: CommunitiesIcon },
@@ -332,8 +346,8 @@ export default function App() {
       )}
 
       <div className="app-main">
-        {!isMessagesRoute && (
-          <header className="topbar social-topbar">
+        {!hideTopbar && (
+          <header className={`topbar social-topbar${hideTopSearch ? ' topbar-no-search' : ''}`}>
             <div className="topbar-left">
               {isAuthed ? (
                 <div className="page-title-block">
@@ -348,16 +362,18 @@ export default function App() {
               )}
             </div>
 
-            <div className="topbar-center">
-              <form className="top-search" onSubmit={submitSearch}>
-                <input
-                  value={searchText}
-                  onChange={event => setSearchText(event.target.value)}
-                  placeholder="Search listings, books, furniture, tech..."
-                />
-                <button type="submit">Search</button>
-              </form>
-            </div>
+            {!hideTopSearch && (
+              <div className="topbar-center">
+                <form className="top-search" onSubmit={submitSearch}>
+                  <input
+                    value={searchText}
+                    onChange={event => setSearchText(event.target.value)}
+                    placeholder="Search listings, books, furniture, tech..."
+                  />
+                  <button type="submit">Search</button>
+                </form>
+              </div>
+            )}
 
             <div className="topbar-right">
               {isAuthed ? (
@@ -374,13 +390,13 @@ export default function App() {
           </header>
         )}
 
-        <main className={`page social-page${isMessagesRoute ? ' messages-workspace-page' : ''}`}>
+        <main className={`page social-page${isMessagesRoute ? ' messages-workspace-page' : ''}${isModerationRoute ? ' moderation-workspace-page' : ''}`}>
           <Routes>
             <Route path="/auth" element={<AuthPage onLogin={onLogin} />} />
             <Route path="/" element={<DashboardPage user={user} communities={communities} />} />
             <Route path="/communities" element={<CommunitiesPage user={user} communities={communities} />} />
             <Route path="/communities/:communityId" element={<CommunityPage user={user} communities={communities} />} />
-            <Route path="/profile" element={<ProfilePage user={user} />} />
+            <Route path="/profile" element={<ProfilePage user={user} communities={communities} onCommunitiesChanged={refreshCommunities} />} />
             <Route path="/profile/edit" element={<ProfileEditPage user={user} onProfileUpdated={onProfileUpdated} />} />
             <Route path="/users/:userId" element={<UserProfilePage user={user} />} />
             <Route path="/sell" element={<CreateListingPage user={user} communities={communities} />} />

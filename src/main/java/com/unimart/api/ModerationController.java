@@ -8,6 +8,7 @@ import com.unimart.service.ApiException;
 import com.unimart.service.MembershipService;
 import java.util.List;
 import java.util.Map;
+import java.util.Comparator;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -40,6 +41,16 @@ public class ModerationController {
         membershipService.requireModerator(authContext.user().getId(), communityId);
         return membershipRepository.findByCommunityIdAndStatus(communityId, MembershipStatus.PENDING).stream()
             .map(Mapper::membershipRequest)
+            .toList();
+    }
+
+    @GetMapping("/{communityId}/members")
+    public List<Map<String, Object>> activeMembers(@PathVariable Long communityId, @CurrentUser AuthContext authContext) {
+        requireAuth(authContext);
+        membershipService.requireModerator(authContext.user().getId(), communityId);
+        return membershipRepository.findByCommunityIdAndStatus(communityId, MembershipStatus.ACTIVE).stream()
+            .sorted(Comparator.comparing(membership -> membership.getUser().getDisplayName().toLowerCase()))
+            .map(Mapper::activeMember)
             .toList();
     }
 

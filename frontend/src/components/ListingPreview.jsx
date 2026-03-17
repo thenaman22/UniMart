@@ -16,16 +16,18 @@ export function ListingPreview({ listing, mode = 'feed' }) {
       : []
   const [activeIndex, setActiveIndex] = useState(0)
   const [orientations, setOrientations] = useState({})
+  const isTileMode = mode === 'tile'
 
   if (mediaItems.length === 0) {
     return null
   }
 
-  const safeIndex = Math.min(activeIndex, mediaItems.length - 1)
+  const safeIndex = isTileMode ? 0 : Math.min(activeIndex, mediaItems.length - 1)
   const activeMedia = mediaItems[safeIndex]
   const orientation = orientations[safeIndex] || 'landscape'
   const src = `http://localhost:8080${activeMedia.url}`
   const frameClassName = `listing-media-frame ${mode} ${orientation}`
+  const mediaClassName = `listing-media${isTileMode ? ' listing-media-tile' : ''}`
 
   function updateOrientation(index, width, height) {
     setOrientations(current => ({
@@ -39,7 +41,7 @@ export function ListingPreview({ listing, mode = 'feed' }) {
       <div className={frameClassName}>
         {activeMedia.type === 'VIDEO' ? (
           <video
-            className="listing-media"
+            className={mediaClassName}
             src={src}
             controls
             onLoadedMetadata={event => {
@@ -49,7 +51,7 @@ export function ListingPreview({ listing, mode = 'feed' }) {
           />
         ) : (
           <img
-            className="listing-media"
+            className={mediaClassName}
             src={src}
             alt={listing.title}
             onLoad={event => {
@@ -59,7 +61,7 @@ export function ListingPreview({ listing, mode = 'feed' }) {
           />
         )}
 
-        {mediaItems.length > 1 && (
+        {mediaItems.length > 1 && !isTileMode && (
           <>
             <button
               type="button"

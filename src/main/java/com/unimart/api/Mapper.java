@@ -92,8 +92,22 @@ public final class Mapper {
             "membershipId", membership.getId(),
             "communityId", membership.getCommunity().getId(),
             "communityName", membership.getCommunity().getName(),
+            "userId", membership.getUser().getId(),
             "requesterName", membership.getUser().getDisplayName(),
             "requesterEmail", membership.getUser().getEmail(),
+            "status", membership.getStatus().name(),
+            "role", membership.getRole().name()
+        );
+    }
+
+    public static Map<String, Object> activeMember(Membership membership) {
+        return Map.of(
+            "membershipId", membership.getId(),
+            "communityId", membership.getCommunity().getId(),
+            "communityName", membership.getCommunity().getName(),
+            "userId", membership.getUser().getId(),
+            "memberName", membership.getUser().getDisplayName(),
+            "memberEmail", membership.getUser().getEmail(),
             "status", membership.getStatus().name(),
             "role", membership.getRole().name()
         );
