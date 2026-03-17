@@ -1,6 +1,7 @@
 package com.unimart.api;
 
 import com.unimart.api.dto.MessageDtos.SendMessageRequest;
+import com.unimart.api.dto.MessageDtos.MessageAttachmentRequest;
 import com.unimart.domain.ListingMedia;
 import com.unimart.domain.UserAccount;
 import com.unimart.repository.ListingMediaRepository;
@@ -37,7 +38,12 @@ public class MessageController {
         @CurrentUser AuthContext authContext
     ) {
         UserAccount user = requireAuth(authContext);
-        ConversationDetail detail = messagingService.startConversation(user, listingId, request.body());
+        ConversationDetail detail = messagingService.startConversation(
+            user,
+            listingId,
+            request.body(),
+            toAttachment(request.attachment())
+        );
         return MessageMapper.conversationDetail(detail, user.getId(), previewMedia(detail.conversation().getListing().getId()));
     }
 
@@ -106,7 +112,12 @@ public class MessageController {
         @CurrentUser AuthContext authContext
     ) {
         UserAccount user = requireAuth(authContext);
-        ConversationDetail detail = messagingService.sendConversationMessage(user, conversationId, request.body());
+        ConversationDetail detail = messagingService.sendConversationMessage(
+            user,
+            conversationId,
+            request.body(),
+            toAttachment(request.attachment())
+        );
         return MessageMapper.conversationDetail(detail, user.getId(), previewMedia(detail.conversation().getListing().getId()));
     }
 
@@ -130,6 +141,18 @@ public class MessageController {
 
     private ListingMedia previewMedia(Long listingId) {
         return listingMediaRepository.findFirstByListingIdOrderByIdAsc(listingId);
+    }
+
+    private MessagingService.MessageAttachment toAttachment(MessageAttachmentRequest request) {
+        if (request == null) {
+            return null;
+        }
+        return new MessagingService.MessageAttachment(
+            request.storageKey(),
+            request.contentType(),
+            request.fileSize(),
+            request.mediaType()
+        );
     }
 
     private UserAccount requireAuth(AuthContext authContext) {
