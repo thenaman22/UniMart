@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -83,6 +84,13 @@ public class CommunityController {
     public Map<String, Object> requestMembership(@PathVariable Long communityId, @CurrentUser AuthContext authContext) {
         requireAuth(authContext);
         Membership membership = membershipService.requestMembership(authContext.user(), communityId);
+        return Mapper.community(membership);
+    }
+
+    @DeleteMapping("/{communityId}/membership")
+    public Map<String, Object> leaveCommunity(@PathVariable Long communityId, @CurrentUser AuthContext authContext) {
+        requireAuth(authContext);
+        Membership membership = membershipService.leaveCommunity(authContext.user(), communityId);
         return Mapper.community(membership);
     }
 

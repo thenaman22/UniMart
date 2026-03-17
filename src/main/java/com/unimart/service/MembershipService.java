@@ -109,6 +109,17 @@ public class MembershipService {
     }
 
     @Transactional
+    public Membership leaveCommunity(UserAccount user, Long communityId) {
+        Membership membership = membershipRepository.findByUserIdAndCommunityId(user.getId(), communityId)
+            .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Membership not found"));
+        if (membership.getStatus() != MembershipStatus.ACTIVE) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Only active memberships can be left");
+        }
+        membership.setStatus(MembershipStatus.REVOKED);
+        return membership;
+    }
+
+    @Transactional
     public Membership joinByInvite(UserAccount user, String inviteToken) {
         InviteLink inviteLink = inviteLinkRepository.findByToken(inviteToken)
             .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Invite link not found"));
