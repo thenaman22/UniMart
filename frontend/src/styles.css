@@ -2543,8 +2543,23 @@ h3 {
   margin: 0;
 }
 
+.moderation-community-select-shell {
+  position: relative;
+  width: min(100%, 320px);
+  flex: 0 0 auto;
+}
+
 .moderation-community-select {
-  max-width: 320px;
+  width: 100%;
+  max-width: none;
+  padding-right: 3.2rem;
+}
+
+.moderation-community-select-badge {
+  top: -9px;
+  right: -9px;
+  border-color: var(--surface-strong);
+  pointer-events: none;
 }
 
 .member-role-controls {
@@ -2718,7 +2733,10 @@ h3 {
   }
 
   .moderation-community-select {
-    max-width: none;
+    width: 100%;
+  }
+
+  .moderation-community-select-shell {
     width: 100%;
   }
 

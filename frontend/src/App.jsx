@@ -13,6 +13,21 @@ import { UserProfilePage } from './pages/UserProfilePage'
 import { EditListingPage } from './pages/EditListingPage'
 import { MessagesPage } from './pages/MessagesPage'
 
+const EMPTY_MESSAGE_SUMMARY = {
+  sellerUnreadCount: 0,
+  buyerUnreadCount: 0,
+  totalUnreadCount: 0
+}
+
+const EMPTY_MODERATION_SUMMARY = {
+  pendingRequestCount: 0,
+  communities: []
+}
+
+function formatNotificationCount(count) {
+  return count > 9 ? '9+' : count
+}
+
 function HomeIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -115,9 +130,10 @@ export default function App() {
   })
   const [communities, setCommunities] = useState([])
   const [messageSummary, setMessageSummary] = useState({
-    sellerUnreadCount: 0,
-    buyerUnreadCount: 0,
-    totalUnreadCount: 0
+    ...EMPTY_MESSAGE_SUMMARY
+  })
+  const [moderationSummary, setModerationSummary] = useState({
+    ...EMPTY_MODERATION_SUMMARY
   })
   const [searchText, setSearchText] = useState('')
   const [theme, setTheme] = useState(() => localStorage.getItem('unimart-theme') || 'light')
@@ -150,35 +166,37 @@ export default function App() {
 
   useEffect(() => {
     if (!user) {
-      setMessageSummary({
-        sellerUnreadCount: 0,
-        buyerUnreadCount: 0,
-        totalUnreadCount: 0
-      })
+      setMessageSummary(EMPTY_MESSAGE_SUMMARY)
+      setModerationSummary(EMPTY_MODERATION_SUMMARY)
       return
     }
 
     let cancelled = false
 
-    async function loadSummary() {
-      try {
-        const summary = await api('/messages/summary')
-        if (!cancelled) {
-          setMessageSummary(summary)
-        }
-      } catch {
-        if (!cancelled) {
-          setMessageSummary({
-            sellerUnreadCount: 0,
-            buyerUnreadCount: 0,
-            totalUnreadCount: 0
-          })
-        }
+    async function loadSummaries() {
+      const [messageResult, moderationResult] = await Promise.allSettled([
+        api('/messages/summary'),
+        api('/moderation/summary')
+      ])
+
+      if (cancelled) {
+        return
       }
+
+      setMessageSummary(
+        messageResult.status === 'fulfilled'
+          ? messageResult.value
+          : EMPTY_MESSAGE_SUMMARY
+      )
+      setModerationSummary(
+        moderationResult.status === 'fulfilled'
+          ? moderationResult.value
+          : EMPTY_MODERATION_SUMMARY
+      )
     }
 
-    loadSummary()
-    const timer = window.setInterval(loadSummary, 30000)
+    loadSummaries()
+    const timer = window.setInterval(loadSummaries, 30000)
     return () => {
       cancelled = true
       window.clearInterval(timer)
@@ -222,12 +240,23 @@ export default function App() {
     localStorage.removeItem('unimart-user')
     setUser(null)
     setCommunities([])
-    setMessageSummary({
-      sellerUnreadCount: 0,
-      buyerUnreadCount: 0,
-      totalUnreadCount: 0
-    })
+    setMessageSummary(EMPTY_MESSAGE_SUMMARY)
+    setModerationSummary(EMPTY_MODERATION_SUMMARY)
     navigate('/auth')
+  }
+
+  async function refreshModerationSummary() {
+    if (!user) {
+      setModerationSummary(EMPTY_MODERATION_SUMMARY)
+      return
+    }
+
+    try {
+      const summary = await api('/moderation/summary')
+      setModerationSummary(summary)
+    } catch {
+      setModerationSummary(EMPTY_MODERATION_SUMMARY)
+    }
   }
 
   function submitSearch(event) {
@@ -318,6 +347,11 @@ export default function App() {
           <nav className="sidebar-nav" aria-label="Primary navigation">
             {primaryNav.map(item => {
               const Icon = item.icon
+              const notificationCount = item.to === '/messages'
+                ? messageSummary.totalUnreadCount
+                : item.to === '/moderation'
+                  ? moderationSummary.pendingRequestCount
+                  : 0
               return (
                 <NavLink
                   key={item.to}
@@ -327,9 +361,9 @@ export default function App() {
                 >
                   <span className="sidebar-icon">
                     <Icon />
-                    {item.to === '/messages' && messageSummary.totalUnreadCount > 0 && (
+                    {notificationCount > 0 && (
                       <span className="sidebar-notification-badge">
-                        {messageSummary.totalUnreadCount > 9 ? '9+' : messageSummary.totalUnreadCount}
+                        {formatNotificationCount(notificationCount)}
                       </span>
                     )}
                   </span>
@@ -409,7 +443,18 @@ export default function App() {
             <Route path="/sell" element={<CreateListingPage user={user} communities={communities} />} />
             <Route path="/messages" element={<MessagesPage user={user} />} />
             <Route path="/listings/:listingId/edit" element={<EditListingPage user={user} communities={communities} />} />
-            <Route path="/moderation" element={<ModerationPage user={user} communities={communities} onCommunitiesChanged={refreshCommunities} />} />
+            <Route
+              path="/moderation"
+              element={
+                <ModerationPage
+                  user={user}
+                  communities={communities}
+                  moderationSummary={moderationSummary}
+                  onCommunitiesChanged={refreshCommunities}
+                  onModerationSummaryChanged={refreshModerationSummary}
+                />
+              }
+            />
           </Routes>
         </main>
       </div>

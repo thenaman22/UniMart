@@ -26,6 +26,7 @@ public class ProfileService {
     public UserAccount getPublicProfile(UserAccount viewer, Long profileUserId) {
         UserAccount profileUser = getProfile(profileUserId);
         List<Long> sharedCommunityIds = membershipService.sharedActiveCommunityIds(viewer, profileUser);
+        // Implemented the feature where the user is only able to see other user, if they share some community
         if (sharedCommunityIds.isEmpty()) {
             throw new ApiException(HttpStatus.FORBIDDEN, "You cannot view this seller profile");
         }

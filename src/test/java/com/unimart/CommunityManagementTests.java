@@ -3,6 +3,8 @@ package com.unimart;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.unimart.api.AuthContext;
+import com.unimart.api.ModerationController;
 import com.unimart.domain.Community;
 import com.unimart.domain.CommunityDomain;
 import com.unimart.domain.CommunityPostingPolicy;
@@ -32,6 +34,7 @@ import com.unimart.service.UploadService;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -56,6 +59,9 @@ class CommunityManagementTests {
 
     @Autowired
     private MessagingService messagingService;
+
+    @Autowired
+    private ModerationController moderationController;
 
     @Autowired
     private UserAccountRepository userAccountRepository;
@@ -283,6 +289,69 @@ class CommunityManagementTests {
         assertThat(listingConversationRepository.findByListingCommunityId(community.getId())).isEmpty();
         assertThat(listingMessageRepository.findByConversationIdIn(List.of(conversationId))).isEmpty();
         assertThat(Files.exists(uploadService.resolvePath(storageKey))).isFalse();
+    }
+
+    @Test
+    void moderationSummaryCountsOnlyManageablePendingRequests() {
+        UserAccount moderator = saveUser("summary-moderator");
+        UserAccount pendingOne = saveUser("summary-pending-one");
+        UserAccount pendingTwo = saveUser("summary-pending-two");
+        UserAccount pendingThree = saveUser("summary-pending-three");
+        UserAccount excludedPending = saveUser("summary-excluded");
+        UserAccount reporter = saveUser("summary-reporter");
+
+        Community firstManaged = createCommunity(saveUser("summary-admin-one"), "Managed A", CommunityPostingPolicy.ALL_MEMBERS_CAN_POST);
+        Community secondManaged = createCommunity(saveUser("summary-admin-two"), "Managed B", CommunityPostingPolicy.ALL_MEMBERS_CAN_POST);
+        Community managedWithoutRequests = createCommunity(
+            saveUser("summary-admin-three"),
+            "Managed C",
+            CommunityPostingPolicy.ALL_MEMBERS_CAN_POST
+        );
+        Community unmanageable = createCommunity(saveUser("summary-admin-four"), "Unmanaged", CommunityPostingPolicy.ALL_MEMBERS_CAN_POST);
+
+        addMembership(moderator, firstManaged, MembershipRole.MODERATOR, MembershipStatus.ACTIVE);
+        addMembership(moderator, secondManaged, MembershipRole.ADMIN, MembershipStatus.ACTIVE);
+        addMembership(moderator, managedWithoutRequests, MembershipRole.MODERATOR, MembershipStatus.ACTIVE);
+        addMembership(moderator, unmanageable, MembershipRole.MEMBER, MembershipStatus.ACTIVE);
+        addMembership(reporter, firstManaged, MembershipRole.MEMBER, MembershipStatus.ACTIVE);
+
+        addMembership(pendingOne, firstManaged, MembershipRole.MEMBER, MembershipStatus.PENDING);
+        addMembership(pendingTwo, firstManaged, MembershipRole.MEMBER, MembershipStatus.PENDING);
+        addMembership(pendingThree, secondManaged, MembershipRole.MEMBER, MembershipStatus.PENDING);
+        addMembership(excludedPending, unmanageable, MembershipRole.MEMBER, MembershipStatus.PENDING);
+
+        Listing reportListing = createListing(reporter, firstManaged);
+        Report report = new Report();
+        report.setListing(reportListing);
+        report.setReporter(reporter);
+        report.setReason("Still pending report");
+        report.setResolved(false);
+        reportRepository.save(report);
+
+        Map<String, Object> summary = moderationController.summary(new AuthContext(moderator));
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> communities = (List<Map<String, Object>>) summary.get("communities");
+
+        assertThat(summary.get("pendingRequestCount")).isEqualTo(3);
+        assertThat(communities).containsExactly(
+            Map.of("communityId", firstManaged.getId(), "pendingRequestCount", 2),
+            Map.of("communityId", secondManaged.getId(), "pendingRequestCount", 1),
+            Map.of("communityId", managedWithoutRequests.getId(), "pendingRequestCount", 0)
+        );
+    }
+
+    @Test
+    void moderationSummaryIsEmptyWithoutManageableCommunities() {
+        UserAccount viewer = saveUser("summary-viewer");
+        Community community = createCommunity(saveUser("summary-owner"), "Viewer only", CommunityPostingPolicy.ALL_MEMBERS_CAN_POST);
+
+        addMembership(viewer, community, MembershipRole.MEMBER, MembershipStatus.ACTIVE);
+        addMembership(saveUser("summary-other-pending"), community, MembershipRole.MEMBER, MembershipStatus.PENDING);
+
+        Map<String, Object> summary = moderationController.summary(new AuthContext(viewer));
+
+        assertThat(summary.get("pendingRequestCount")).isEqualTo(0);
+        assertThat(summary.get("communities")).isEqualTo(List.of());
     }
 
     private UserAccount saveUser(String key) {
