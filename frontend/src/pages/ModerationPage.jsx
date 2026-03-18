@@ -12,7 +12,17 @@ const SELLER_ROLE_OPTIONS = [
   { value: 'MODERATOR', label: 'Moderator' }
 ]
 
-export function ModerationPage({ user, communities, onCommunitiesChanged }) {
+function formatNotificationCount(count) {
+  return count > 9 ? '9+' : count
+}
+
+export function ModerationPage({
+  user,
+  communities,
+  moderationSummary,
+  onCommunitiesChanged,
+  onModerationSummaryChanged
+}) {
   const manageableCommunities = useMemo(
     () => communities.filter(item => item.canModerate),
     [communities]
@@ -54,8 +64,11 @@ export function ModerationPage({ user, communities, onCommunitiesChanged }) {
     try {
       setError('')
       await api(`/moderation/memberships/${membershipId}?approve=${approve}`, { method: 'PATCH' })
-      await loadModerationData(modCommunity.communityId)
-      await onCommunitiesChanged?.()
+      await Promise.all([
+        loadModerationData(modCommunity.communityId),
+        onCommunitiesChanged?.(),
+        onModerationSummaryChanged?.()
+      ])
     } catch (err) {
       setError(err.message)
     } finally {
@@ -102,6 +115,14 @@ export function ModerationPage({ user, communities, onCommunitiesChanged }) {
   const currentRoleLabel = modCommunity
     ? `${modCommunity.roleLabel || modCommunity.role}${modCommunity.isCreator ? ' (creator)' : ''}`
     : ''
+  const pendingCountsByCommunityId = useMemo(() => (
+    new Map((moderationSummary?.communities || []).map(item => [String(item.communityId), item.pendingRequestCount]))
+  ), [moderationSummary])
+  const totalPendingRequestCount = moderationSummary?.pendingRequestCount || 0
+  const selectedCommunityPendingCount = modCommunity
+    ? (pendingCountsByCommunityId.get(String(modCommunity.communityId)) || 0)
+    : 0
+  const otherPendingRequestCount = Math.max(0, totalPendingRequestCount - selectedCommunityPendingCount)
 
   if (!user) {
     return <section className="panel"><p>Please sign in first.</p></section>
@@ -118,17 +139,24 @@ export function ModerationPage({ user, communities, onCommunitiesChanged }) {
           <div className="moderation-title-pill">{modCommunity.name}</div>
           <p className="feed-meta moderation-role-summary">Your role: <strong>{currentRoleLabel}</strong></p>
         </div>
-        <select
-          className="moderation-community-select"
-          value={modCommunity.communityId}
-          onChange={event => setSelectedCommunityId(event.target.value)}
-        >
-          {manageableCommunities.map(community => (
-            <option key={community.communityId} value={community.communityId}>
-              {community.name}
-            </option>
-          ))}
-        </select>
+        <div className="moderation-community-select-shell">
+          <select
+            className="moderation-community-select"
+            value={modCommunity.communityId}
+            onChange={event => setSelectedCommunityId(event.target.value)}
+          >
+            {manageableCommunities.map(community => (
+              <option key={community.communityId} value={community.communityId}>
+                {community.name}
+              </option>
+            ))}
+          </select>
+          {otherPendingRequestCount > 0 && (
+            <span className="sidebar-notification-badge moderation-community-select-badge">
+              {formatNotificationCount(otherPendingRequestCount)}
+            </span>
+          )}
+        </div>
       </div>
       {error && <p className="error">{error}</p>}
 
